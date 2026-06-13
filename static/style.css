@@ -167,6 +167,10 @@ body {
     overflow-y: auto; /* Permite scroll vertical si el contenido excede el alto */
 }
 
+.sidebar-tab-btn {
+    display: none;
+}
+
 .brand {
     display: flex;
     align-items: center;
@@ -1403,4 +1407,196 @@ tr.status-rechazado td:first-child { border-left: 3px solid var(--danger); }
     .price-val {
         font-size: 36px !important;
     }
+}
+
+/* Tablet & Mobile Sidebar Drawer Override (< 992px) */
+@media (max-width: 992px) {
+    .app-container {
+        flex-direction: row !important;
+        overflow: hidden !important;
+    }
+    
+    .sidebar {
+        position: fixed !important;
+        top: 0 !important;
+        left: -300px !important;
+        width: 300px !important;
+        height: 100vh !important;
+        z-index: 1000 !important;
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        box-shadow: 0 0 30px rgba(0, 0, 0, 0.5) !important;
+        border-right: 1px solid var(--border-color) !important;
+        border-bottom: none !important;
+    }
+    
+    .sidebar.open {
+        transform: translateX(300px) !important;
+    }
+    
+    /* Floating Sidebar Tab for Mobile */
+    .sidebar-tab-btn {
+        display: flex !important;
+        position: absolute;
+        top: 140px;
+        left: 100%;
+        width: 44px;
+        height: 56px;
+        background: var(--bg-panel);
+        border: 1px solid var(--border-color);
+        border-left: none;
+        border-radius: 0 16px 16px 0;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        box-shadow: 6px 2px 16px rgba(0, 0, 0, 0.25);
+        z-index: 1001;
+        transition: var(--transition);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        padding: 0;
+        outline: none;
+    }
+    
+    .sidebar-tab-btn:hover {
+        background: var(--input-focus-bg);
+        border-color: var(--primary);
+        border-left: none;
+    }
+    
+    .sidebar.open .sidebar-tab-btn {
+        border-color: var(--primary);
+        border-left: none;
+        box-shadow: 6px 2px 20px rgba(99, 102, 241, 0.25);
+    }
+    
+    .hamburger-menu {
+        width: 18px;
+        height: 12px;
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+    
+    .hamburger-menu span {
+        display: block;
+        width: 100%;
+        height: 2px;
+        background-color: var(--text-primary);
+        border-radius: 1px;
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease, background-color 0.3s ease;
+    }
+    
+    /* Hamburger to X Animation on open */
+    .sidebar.open .hamburger-menu span:nth-child(1) {
+        transform: translateY(5px) rotate(45deg);
+        background-color: var(--primary);
+    }
+    
+    .sidebar.open .hamburger-menu span:nth-child(2) {
+        opacity: 0;
+        transform: scaleX(0);
+    }
+    
+    .sidebar.open .hamburger-menu span:nth-child(3) {
+        transform: translateY(-5px) rotate(-45deg);
+        background-color: var(--primary);
+    }
+    
+    /* Show Toggle and Close buttons */
+    .sidebar-toggle-btn {
+        display: flex !important;
+        align-items: center;
+        justify-content: center;
+        width: 42px;
+        height: 42px;
+        border-radius: var(--radius-md);
+        background: var(--input-bg);
+        border: 1px solid var(--border-color);
+        color: var(--text-primary);
+        font-size: 18px;
+        cursor: pointer;
+        transition: var(--transition);
+        margin-right: 12px;
+        flex-shrink: 0;
+    }
+    
+    .sidebar-toggle-btn:hover {
+        background: var(--input-focus-bg);
+        border-color: var(--primary);
+    }
+    
+    .sidebar-close-btn {
+        display: flex !important;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid var(--border-color);
+        color: var(--text-secondary);
+        font-size: 16px;
+        cursor: pointer;
+        position: absolute;
+        top: 30px;
+        right: 20px;
+        transition: var(--transition);
+        z-index: 1001;
+    }
+    
+    .sidebar-close-btn:hover {
+        background: var(--danger);
+        color: #fff;
+        border-color: var(--danger);
+    }
+    
+    /* Adjust header info alignment on tablet/mobile */
+    .main-header {
+        display: flex !important;
+        align-items: center !important;
+        flex-direction: row !important;
+        justify-content: space-between !important;
+        padding: 0 24px !important;
+        height: 90px !important;
+    }
+    
+    .header-info-wrapper {
+        flex-grow: 1 !important;
+    }
+    
+    .header-info {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: flex-start !important;
+    }
+    
+    .header-info h2 {
+        font-size: 18px !important;
+    }
+    
+    /* Ocultar breadcrumb en celus muy chicos si molesta, pero se ve bien */
+    #searchBreadcrumb {
+        font-size: 11px !important;
+    }
+}
+
+/* Base styling for Overlay (outside media query for transition safety) */
+.sidebar-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(11, 15, 25, 0.65);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 999;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+}
+.sidebar-overlay.show {
+    opacity: 1;
+    pointer-events: auto;
 }

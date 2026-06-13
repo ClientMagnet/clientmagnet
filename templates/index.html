@@ -25,7 +25,17 @@
                     <h1>ClientMagnet</h1>
                     <span>B2B Lead Generator</span>
                 </div>
+                <button type="button" class="sidebar-close-btn" id="sidebarClose" style="display: none;"><i class="fa-solid fa-xmark"></i></button>
             </div>
+            
+            <!-- Floating Sidebar Tab for Mobile -->
+            <button type="button" class="sidebar-tab-btn" id="sidebarTabBtn" aria-label="Alternar configuración">
+                <div class="hamburger-menu">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            </button>
             
             <div class="theme-selector-container">
                 <span><i class="fa-solid fa-palette"></i> Tema</span>
@@ -143,9 +153,14 @@
         <!-- Main Content Area -->
         <main class="main-content">
             <header class="main-header">
-                <div class="header-info">
-                    <h2 style="display: flex; align-items: center; gap: 10px;"><i class="fa-solid fa-magnet" style="color: var(--primary);"></i>Panel de Prospección</h2>
-                    <p id="searchBreadcrumb">Inicia una búsqueda para extraer prospectos de Google Maps</p>
+                <div class="header-info-wrapper" style="display: flex; align-items: center; gap: 12px; flex-grow: 1;">
+                    <button type="button" class="sidebar-toggle-btn" id="sidebarToggle" style="display: none;">
+                        <i class="fa-solid fa-bars"></i>
+                    </button>
+                    <div class="header-info">
+                        <h2 style="display: flex; align-items: center; gap: 10px; margin: 0;"><i class="fa-solid fa-magnet" style="color: var(--primary);"></i>Panel de Prospección</h2>
+                        <p id="searchBreadcrumb" style="margin: 2px 0 0 0;">Inicia una búsqueda para extraer prospectos de Google Maps</p>
+                    </div>
                 </div>
                 <div class="header-actions" style="display: flex; align-items: center; gap: 20px;">
                     <div class="auth-section" id="authSection"></div>
@@ -244,6 +259,7 @@
             </div>
         </div>
     </div>
+    <div class="sidebar-overlay" id="sidebarOverlay" style="display: none;"></div>
 
     <script src="/static/script.js"></script>
 </body>

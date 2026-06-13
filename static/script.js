@@ -672,5 +672,61 @@ if (btnUpgradeAction) {
     });
 }
 
+// Mobile Sidebar Drawer Toggle Logic
+const sidebarToggle = document.getElementById("sidebarToggle");
+const sidebarClose = document.getElementById("sidebarClose");
+const sidebarOverlay = document.getElementById("sidebarOverlay");
+const sidebarElement = document.querySelector(".sidebar");
+const sidebarTabBtn = document.getElementById("sidebarTabBtn");
+
+function openSidebar() {
+    if (sidebarElement) sidebarElement.classList.add("open");
+    if (sidebarOverlay) {
+        sidebarOverlay.style.display = "block";
+        setTimeout(() => sidebarOverlay.classList.add("show"), 10);
+    }
+}
+
+function closeSidebar() {
+    if (sidebarElement) sidebarElement.classList.remove("open");
+    if (sidebarOverlay) {
+        sidebarOverlay.classList.remove("show");
+        setTimeout(() => sidebarOverlay.style.display = "none", 300);
+    }
+}
+
+if (sidebarToggle) {
+    sidebarToggle.addEventListener("click", openSidebar);
+}
+
+if (sidebarClose) {
+    sidebarClose.addEventListener("click", closeSidebar);
+}
+
+if (sidebarOverlay) {
+    sidebarOverlay.addEventListener("click", closeSidebar);
+}
+
+if (sidebarTabBtn) {
+    sidebarTabBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (sidebarElement && sidebarElement.classList.contains("open")) {
+            closeSidebar();
+        } else {
+            openSidebar();
+        }
+    });
+}
+
+// Auto-cerrar sidebar al enviar formulario en móviles
+const prospectFormElement = document.getElementById("prospectForm");
+if (prospectFormElement) {
+    prospectFormElement.addEventListener("submit", () => {
+        if (window.innerWidth <= 992) {
+            closeSidebar();
+        }
+    });
+}
+
 // Inicializar Auth al cargar consultando la sesión del servidor
 checkSession();
