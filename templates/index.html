@@ -28,15 +28,6 @@
                 <button type="button" class="sidebar-close-btn" id="sidebarClose" style="display: none;"><i class="fa-solid fa-xmark"></i></button>
             </div>
             
-            <!-- Floating Sidebar Tab for Mobile -->
-            <button type="button" class="sidebar-tab-btn" id="sidebarTabBtn" aria-label="Alternar configuración">
-                <div class="hamburger-menu">
-                    <span></span>
-                    <span></span>
-                    <span></span>
-                </div>
-            </button>
-            
             <div class="theme-selector-container">
                 <span><i class="fa-solid fa-palette"></i> Tema</span>
                 <div class="theme-buttons">
@@ -149,6 +140,15 @@
                 </div>
             </div>
         </aside>
+
+        <!-- Floating Sidebar Tab for Mobile (outside sidebar to prevent overflow clipping) -->
+        <button type="button" class="sidebar-tab-btn" id="sidebarTabBtn" aria-label="Alternar configuración">
+            <div class="hamburger-menu">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </button>
 
         <!-- Main Content Area -->
         <main class="main-content">
