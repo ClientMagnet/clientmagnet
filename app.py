@@ -13,6 +13,7 @@ import os
 
 app = Flask(__name__)
 app.secret_key = "clientmagnet-secret-key-for-local-dev-12345"
+app.config['PERMANENT_SESSION_LIFETIME'] = datetime.timedelta(days=30)
 
 def load_config():
     config_file = "config.json"
@@ -947,7 +948,8 @@ def auth_google():
         # Obtener o registrar perfil del usuario
         user_profile = get_user_profile(email, name, picture)
         
-        # Guardar datos básicos en la sesión de Flask
+        # Guardar datos básicos en la sesión de Flask y hacerla permanente
+        session.permanent = True
         session["user"] = {
             "email": email,
             "name": name,
@@ -980,6 +982,7 @@ def auth_google_redirect():
             
         user_profile = get_user_profile(email, name, picture)
         
+        session.permanent = True
         session["user"] = {
             "email": email,
             "name": name,
@@ -1000,6 +1003,7 @@ def auth_demo():
     
     user_profile = get_user_profile(email, name, picture)
     
+    session.permanent = True
     session["user"] = {
         "email": email,
         "name": name,
