@@ -1,5 +1,7 @@
 // Global State
 let localLeads = [];
+let originalLeads = [];
+let currentNicho = "", currentCiudad = "", currentZona = "";
 
 // DOM Elements
 const prospectForm = document.getElementById("prospectForm");
@@ -166,6 +168,16 @@ prospectForm.addEventListener("submit", async function(e) {
         
         if (response.ok && result.status === "success") {
             localLeads = result.data;
+            originalLeads = [...result.data];
+            currentNicho = nicho;
+            currentCiudad = ciudad;
+            currentZona = zona;
+            
+            // Reset filters on new search
+            const hidePremiumCheckbox = document.getElementById("hidePremiumLeads");
+            const sortLeadsSelect = document.getElementById("sortLeads");
+            if (hidePremiumCheckbox) hidePremiumCheckbox.checked = false;
+            if (sortLeadsSelect) sortLeadsSelect.value = "default";
             
             if (localLeads.length === 0) {
                 // Empty results
@@ -224,12 +236,13 @@ function renderLeads(nicho, ciudad, zona) {
     exportBtn.disabled = false;
     statsPanel.style.display = "block";
     
-    // Mostrar barra de filtros y desmarcar checkbox
+    // Mostrar barra de filtros sin resetear sus estados
     const filterBar = document.getElementById("filterBar");
     const hidePremiumCheckbox = document.getElementById("hidePremiumLeads");
-    filterBar.style.display = "flex";
-    hidePremiumCheckbox.checked = false;
-    document.getElementById("filterInfo").textContent = `Mostrando todos los ${localLeads.length} leads.`;
+    if (filterBar) filterBar.style.display = "flex";
+    
+    const hidePremium = hidePremiumCheckbox ? hidePremiumCheckbox.checked : false;
+    let visibleCount = 0;
     
     searchBreadcrumb.innerHTML = `Resultados para: <strong>${nicho}</strong> en <strong>${zona}, ${ciudad}</strong>`;
     
@@ -238,9 +251,25 @@ function renderLeads(nicho, ciudad, zona) {
     localLeads.forEach((lead, index) => {
         const tr = document.createElement("tr");
         tr.id = `row-${index}`;
-        tr.className = "status-pendiente";
+        
+        // Mantener la clase de estado correcta
+        const statusClass = lead.status === "[Pendiente]" ? "status-pendiente" :
+                            lead.status === "[Contactado]" ? "status-contactado" :
+                            lead.status === "[Sin Respuesta]" ? "status-sin-respuesta" :
+                            lead.status === "[Interesado]" ? "status-interesado" :
+                            lead.status === "[Rechazado]" ? "status-rechazado" : "status-pendiente";
+        tr.className = statusClass;
         
         const calidadClass = getCalidadClass(lead.calidad_score);
+        
+        // Aplicar filtro de premium si está activo
+        const shouldHide = hidePremium && (lead.calidad_score > 70);
+        if (shouldHide) {
+            tr.style.display = "none";
+        } else {
+            tr.style.display = "";
+            visibleCount++;
+        }
         
         tr.innerHTML = `
             <td data-label="Negocio">
@@ -308,11 +337,11 @@ function renderLeads(nicho, ciudad, zona) {
             </td>
             <td data-label="Estado">
                 <select class="status-select" id="select-${index}" onchange="updateStatus(${index}, this.value)">
-                    <option value="[Pendiente]" selected>Pendiente</option>
-                    <option value="[Contactado]">Contactado</option>
-                    <option value="[Sin Respuesta]">Sin Respuesta</option>
-                    <option value="[Interesado]">Interesado</option>
-                    <option value="[Rechazado]">Rechazado</option>
+                    <option value="[Pendiente]" ${lead.status === "[Pendiente]" ? "selected" : ""}>Pendiente</option>
+                    <option value="[Contactado]" ${lead.status === "[Contactado]" ? "selected" : ""}>Contactado</option>
+                    <option value="[Sin Respuesta]" ${lead.status === "[Sin Respuesta]" ? "selected" : ""}>Sin Respuesta</option>
+                    <option value="[Interesado]" ${lead.status === "[Interesado]" ? "selected" : ""}>Interesado</option>
+                    <option value="[Rechazado]" ${lead.status === "[Rechazado]" ? "selected" : ""}>Rechazado</option>
                 </select>
             </td>
         `;
@@ -339,6 +368,17 @@ function renderLeads(nicho, ciudad, zona) {
             document.getElementById(`whatsapp-btn-${index}`).href = newLink;
         });
     });
+    
+    // Actualizar texto informativo de filtros
+    const filterInfo = document.getElementById("filterInfo");
+    if (filterInfo) {
+        if (hidePremium) {
+            const hiddenCount = localLeads.length - visibleCount;
+            filterInfo.textContent = `Omitidos ${hiddenCount} prospectos premium. Mostrando ${visibleCount} leads críticos/medios.`;
+        } else {
+            filterInfo.textContent = `Mostrando todos los ${localLeads.length} leads.`;
+        }
+    }
     
     updateMetrics();
 }
@@ -452,36 +492,32 @@ if (spamGuideToggle && spamGuideContent && spamGuideCard) {
     });
 }
 
-// Filtro interactivo de leads premium
+// Filtro y Ordenación Interactiva de Leads
+function applyFiltersAndSort() {
+    if (localLeads.length === 0) return;
+    
+    const sortVal = document.getElementById("sortLeads").value;
+    if (sortVal === "score-desc") {
+        localLeads.sort((a, b) => b.calidad_score - a.calidad_score);
+    } else if (sortVal === "score-asc") {
+        localLeads.sort((a, b) => a.calidad_score - b.calidad_score);
+    } else {
+        // Restaurar orden por defecto de la búsqueda original
+        localLeads = [...originalLeads];
+    }
+    
+    // Volver a renderizar la tabla manteniendo la paginación/búsqueda actual
+    renderLeads(currentNicho, currentCiudad, currentZona);
+}
+
 const hidePremiumCheckbox = document.getElementById("hidePremiumLeads");
 if (hidePremiumCheckbox) {
-    hidePremiumCheckbox.addEventListener("change", function() {
-        const hidePremium = this.checked;
-        let visibleCount = 0;
-        
-        localLeads.forEach((lead, index) => {
-            const tr = document.getElementById(`row-${index}`);
-            if (!tr) return;
-            
-            const shouldHide = hidePremium && (lead.calidad_score > 70);
-            if (shouldHide) {
-                tr.style.display = "none";
-            } else {
-                tr.style.display = "";
-                visibleCount++;
-            }
-        });
-        
-        const filterInfo = document.getElementById("filterInfo");
-        if (hidePremium) {
-            const hiddenCount = localLeads.length - visibleCount;
-            filterInfo.textContent = `Omitidos ${hiddenCount} prospectos premium. Mostrando ${visibleCount} leads críticos/medios.`;
-        } else {
-            filterInfo.textContent = `Mostrando todos los ${localLeads.length} leads.`;
-        }
-        
-        updateMetrics();
-    });
+    hidePremiumCheckbox.addEventListener("change", applyFiltersAndSort);
+}
+
+const sortLeadsSelect = document.getElementById("sortLeads");
+if (sortLeadsSelect) {
+    sortLeadsSelect.addEventListener("change", applyFiltersAndSort);
 }
 
 // Lógica de cambio de tema (ClientMagnet)

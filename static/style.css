@@ -907,6 +907,28 @@ tr.status-rechazado td:first-child { border-left: 3px solid var(--danger); }
     width: 100%;
     justify-content: space-between;
 }
+#sortLeads {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    font-size: 12px;
+    font-weight: 600;
+    padding: 6px 12px;
+    border-radius: var(--radius-md);
+    outline: none;
+    cursor: pointer;
+    transition: var(--transition);
+}
+#sortLeads:focus, #sortLeads:hover {
+    border-color: var(--primary);
+    background: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 0 10px rgba(99, 102, 241, 0.15);
+}
+#sortLeads option {
+    background-color: var(--bg-main);
+    color: var(--text-primary);
+}
 .checkbox-container {
     display: inline-flex;
     align-items: center;

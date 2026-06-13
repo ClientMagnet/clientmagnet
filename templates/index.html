@@ -165,12 +165,26 @@
 
             <!-- Filtros Inteligentes -->
             <div class="filter-bar" id="filterBar" style="display: none;">
-                <div class="filter-group">
-                    <label class="checkbox-container">
-                        <input type="checkbox" id="hidePremiumLeads">
-                        <span class="checkmark"></span>
-                        <i class="fa-solid fa-filter"></i> Ocultar prospectos con Calidad excelente (>70)
-                    </label>
+                <div class="filter-group" style="display: flex; align-items: center; justify-content: space-between; width: 100%; flex-wrap: wrap; gap: 16px;">
+                    <div style="display: flex; align-items: center; gap: 24px; flex-wrap: wrap;">
+                        <label class="checkbox-container">
+                            <input type="checkbox" id="hidePremiumLeads">
+                            <span class="checkmark"></span>
+                            <i class="fa-solid fa-filter"></i> Ocultar prospectos con Calidad excelente (>70)
+                        </label>
+                        
+                        <!-- Filtro de ordenación -->
+                        <div class="sort-container" style="display: flex; align-items: center; gap: 8px;">
+                            <label for="sortLeads" style="font-size: 13px; font-weight: 600; color: var(--text-primary); display: flex; align-items: center; gap: 6px; margin-bottom: 0;">
+                                <i class="fa-solid fa-sort"></i> Ordenar por puntaje:
+                            </label>
+                            <select id="sortLeads">
+                                <option value="default">Por defecto (Google Maps)</option>
+                                <option value="score-desc">De mayor a menor puntaje</option>
+                                <option value="score-asc">De menor a mayor puntaje</option>
+                            </select>
+                        </div>
+                    </div>
                     <span class="filter-info" id="filterInfo">Mostrando todos los leads.</span>
                 </div>
             </div>
