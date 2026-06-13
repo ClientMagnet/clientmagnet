@@ -1683,3 +1683,104 @@ tr.status-rechazado td:first-child { border-left: 3px solid var(--danger); }
     opacity: 1;
     pointer-events: auto;
 }
+
+/* Advanced Settings Card & Warning Banner */
+.advanced-settings-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    transition: var(--transition);
+}
+
+.advanced-settings-card:hover {
+    border-color: rgba(99, 102, 241, 0.3);
+    background: var(--card-hover-bg);
+}
+
+.advanced-settings-header {
+    padding: 12px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    transition: var(--transition);
+    user-select: none;
+}
+
+.advanced-settings-header:hover {
+    color: #fff;
+}
+
+.advanced-settings-header span {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.advanced-settings-header i.toggle-icon {
+    font-size: 10px;
+    transition: transform 0.3s ease;
+}
+
+.advanced-settings-card.open i.toggle-icon {
+    transform: rotate(180deg);
+}
+
+.advanced-settings-content {
+    padding: 0 16px 16px 16px;
+    border-top: 1px solid var(--border-color);
+    background: rgba(0, 0, 0, 0.1);
+    padding-top: 12px;
+}
+
+/* API Key Warning Banner */
+.api-warning-banner {
+    display: none;
+    background: rgba(245, 158, 11, 0.08);
+    border: 1px solid rgba(245, 158, 11, 0.25);
+    border-radius: var(--radius-md);
+    padding: 12px 16px;
+    margin-bottom: 20px;
+    color: var(--warning);
+    font-size: 13px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    animation: fadeIn 0.4s ease;
+}
+
+.api-warning-banner-text {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    line-height: 1.4;
+}
+
+.api-warning-banner-text i {
+    font-size: 16px;
+    flex-shrink: 0;
+}
+
+.api-warning-banner-close {
+    background: none;
+    border: none;
+    color: inherit;
+    cursor: pointer;
+    font-size: 14px;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+    padding: 4px;
+}
+
+.api-warning-banner-close:hover {
+    opacity: 1;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+}

@@ -404,7 +404,33 @@ def fallback_search_website(business_name, city, zona=None):
                         if words and any(w in domain_clean for w in words):
                             return link
     except Exception as e:
-        print(f"Error en fallback_search_website: {e}")
+        print(f"Error en fallback_search_website (DDG): {e}")
+        
+    # Intentar con Bing como respaldo
+    bing_url = f"https://www.bing.com/search?q={urllib.parse.quote(query)}"
+    try:
+        resp = requests.get(bing_url, headers=HEADERS, timeout=5)
+        if resp.status_code == 200:
+            html = urllib.parse.unquote(resp.text)
+            href_pattern = r'href="([^"]+)"'
+            links = re.findall(href_pattern, html)
+            for link in links:
+                if link.startswith("http"):
+                    link_lower = link.lower()
+                    if not any(x in link_lower for x in [
+                        "instagram.com", "facebook.com", "wa.link", "whatsapp.com", "linktr.ee",
+                        "youtube.com", "duckduckgo.com", "google.com", "bing.com", "yahoo.com",
+                        "linkedin.com", "twitter.com", "pinterest.com", "yelp.", "tripadvisor.",
+                        "paginasamarillas", "mercadolibre", "pedidosya", "rappi", "wikipedia.org",
+                        "github.com", "microsoft.com", "apple.com", "t.co"
+                    ]):
+                        domain = urllib.parse.urlparse(link).netloc.lower()
+                        domain_clean = domain.replace("www.", "")
+                        words = [w for w in clean_name.lower().split() if len(w) > 3]
+                        if words and any(w in domain_clean for w in words):
+                            return link
+    except Exception as e:
+        print(f"Error en fallback_search_website (Bing): {e}")
         
     return None
 
@@ -422,25 +448,27 @@ def gemini_search_socials_and_web(api_key, name, city, zona=None, phone=None, ad
     - Dirección física: "{address or 'No disponible'}"
     - Teléfono registrado: "{phone or 'No disponible'}"
     
-    INSTRUCCIONES DE BÚSQUEDA PROFESIONAL:
-    1. Ejecuta búsquedas en internet combinando diferentes términos en la barra de búsqueda de Google:
-       - El nombre del local junto con la ubicación e "instagram" o "sitio web".
-       - El teléfono registrado junto con "instagram" o "facebook" (las empresas suelen publicar su WhatsApp/teléfono de contacto en la biografía).
-       - La dirección o calle junto con el nombre del local para localizar sucursales.
+    ESTRATEGIA DE BÚSQUEDA OBLIGATORIA (Realiza varias consultas de forma secuencial en Google Search):
+    1. CONSULTA 1 (Búsqueda de Instagram): Busca `"{name} {city} instagram"`.
+    2. CONSULTA 2 (Búsqueda de Sitio Web): Busca `"{name} {city} sitio web"` o `"{name} {city} tienda online"`.
+    3. CONSULTA 3 (Búsqueda por Teléfono): Si hay teléfono, busca `"{phone} instagram"` o `"{phone} facebook"`.
+    4. CONSULTA 4 (Búsqueda por Dirección): Si hay dirección, busca `"{name} {address} instagram"`.
     
-    2. REGLAS DE VALIDACIÓN DE IDENTIDAD:
-       - No asocies cuentas de Instagram de locales homónimos situados en otras ciudades o países (ej. si buscas en CABA, no relaciones una cuenta de Córdoba o de México).
-       - Verifica que el perfil de Instagram, Facebook o sitio web encontrado mencione la dirección física "{address or ''}", el teléfono "{phone or ''}", o al menos la zona "{zona or ''}" o ciudad "{city}".
-       - Si encuentras un agregador de enlaces (ej. Linktree, Linkbio, Instabio, Beacons, Flowcode), analízalo o busca qué enlaces contiene para extraer la cuenta de Instagram o Facebook real y el sitio web de ventas.
-       - Si encuentras un sitio de e-commerce propio (ej. Tiendanube, Mercado Shops, Empretienda) o un dominio propio activo (.com, .com.ar) que pertenezca inequívocamente al negocio, regístralo en "website". No consideres directorios de terceros (como Páginas Amarillas, Yelp, TripAdvisor) ni su propia ficha de Google Maps como sitio web.
+    ADVERTENCIA CRÍTICA:
+    - NO unas todos los campos (nombre, dirección, teléfono, ubicación) en una sola consulta de búsqueda, ya que esto causará que Google devuelva cero resultados por ser demasiado específica. Realiza consultas separadas y progresivas en tu herramienta de búsqueda.
+    
+    REGLAS DE VALIDACIÓN DE IDENTIDAD:
+    - No asocies cuentas de Instagram de locales homónimos situados en otras ciudades o países (ej. si buscas en CABA, no relaciones una cuenta de Córdoba o de México).
+    - Verifica que el perfil de Instagram, Facebook o sitio web encontrado mencione la dirección física "{address or ''}", el teléfono "{phone or ''}", o al menos la zona "{zona or ''}" o ciudad "{city}".
+    - Si encuentras un agregador de enlaces (ej. Linktree, Linkbio, Instabio, Beacons, Flowcode), analízalo o busca qué enlaces contiene para extraer la cuenta de Instagram o Facebook real y el sitio web de ventas.
+    - Si encuentras un sitio de e-commerce propio (ej. Tiendanube, Mercado Shops, Empretienda) o un dominio propio activo (.com, .com.ar) que pertenezca inequívocamente al negocio, regístralo en "website". No consideres directorios de terceros (como Páginas Amarillas, Yelp, TripAdvisor) ni su propia ficha de Google Maps como sitio web.
        
-    3. FORMATO DE SALIDA:
-       Devuelve estrictamente un objeto JSON con el siguiente formato, sin bloques de código ```json, sin comentarios y sin explicaciones adicionales:
-       {{
-         "website": "URL oficial completa o null",
-         "instagram": "URL oficial completa o null",
-         "facebook": "URL oficial completa o null"
-       }}
+    Devuelve estrictamente un objeto JSON con el siguiente formato, sin bloques de código ```json, sin comentarios y sin explicaciones adicionales:
+    {{
+      "website": "URL oficial completa o null",
+      "instagram": "URL oficial completa o null",
+      "facebook": "URL oficial completa o null"
+    }}
     """
     
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
@@ -1337,7 +1365,9 @@ def search_businesses():
     zona = req_data.get("zona", "").strip()
     servicio = req_data.get("servicio", "Desarrollo Web").strip()
     cantidad = req_data.get("cantidad", 20)
-    api_key = req_data.get("api_key", "").strip()
+    api_key = req_data.get("api_key", "").strip() or config.get("GEMINI_API_KEY") or os.environ.get("GEMINI_API_KEY", "")
+    if api_key:
+        api_key = api_key.strip()
     
     if not nicho or not ciudad or not zona or not servicio:
         return jsonify({"status": "error", "message": "Nicho, Ciudad, Zona y Servicio son campos obligatorios."}), 400
@@ -1524,7 +1554,8 @@ def search_businesses():
         return jsonify({
             "status": "success",
             "data": extracted_businesses,
-            "leads_consumed_today": user_profile.get("leads_consumed", 15)
+            "leads_consumed_today": user_profile.get("leads_consumed", 15),
+            "gemini_api_key_configured": bool(api_key)
         })
         
     except Exception as e:

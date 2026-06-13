@@ -104,7 +104,7 @@ prospectForm.addEventListener("submit", async function(e) {
     const zona = document.getElementById("zona").value.trim();
     const servicio = serviceInput.value.trim();
     const cantidad = document.getElementById("cantidad").value;
-    const apiKey = "";
+    const apiKey = document.getElementById("geminiApiKey") ? document.getElementById("geminiApiKey").value.trim() : "";
     const estiloMensaje = document.getElementById("estiloMensaje").value;
     
     // 1. Estado de autenticación
@@ -170,6 +170,16 @@ prospectForm.addEventListener("submit", async function(e) {
         if (response.ok && result.status === "success") {
             localLeads = result.data;
             originalLeads = [...result.data];
+            
+            // Mostrar/ocultar banner de advertencia según si la API key está disponible (servidor o UI)
+            const warningBanner = document.getElementById("apiKeyWarningBanner");
+            if (warningBanner) {
+                if (result.gemini_api_key_configured || apiKey) {
+                    warningBanner.style.display = "none";
+                } else {
+                    warningBanner.style.display = "flex";
+                }
+            }
             currentNicho = nicho;
             currentCiudad = ciudad;
             currentZona = zona;
@@ -491,6 +501,31 @@ if (spamGuideToggle && spamGuideContent && spamGuideCard) {
         const isOpen = spamGuideContent.style.display === "block";
         spamGuideContent.style.display = isOpen ? "none" : "block";
         spamGuideCard.classList.toggle("open", !isOpen);
+    });
+}
+
+// Accordion de Ajustes Avanzados
+const advancedToggle = document.getElementById("advancedToggle");
+const advancedContent = document.getElementById("advancedContent");
+const advancedCard = document.querySelector(".advanced-settings-card");
+
+if (advancedToggle && advancedContent && advancedCard) {
+    advancedToggle.addEventListener("click", function() {
+        const isOpen = advancedContent.style.display === "block";
+        advancedContent.style.display = isOpen ? "none" : "block";
+        advancedCard.classList.toggle("open", !isOpen);
+    });
+}
+
+// Cargar y persistir Gemini API Key en localStorage
+const geminiApiKeyInput = document.getElementById("geminiApiKey");
+if (geminiApiKeyInput) {
+    const savedKey = localStorage.getItem("gemini_api_key");
+    if (savedKey) {
+        geminiApiKeyInput.value = savedKey;
+    }
+    geminiApiKeyInput.addEventListener("input", function() {
+        localStorage.setItem("gemini_api_key", geminiApiKeyInput.value.trim());
     });
 }
 
