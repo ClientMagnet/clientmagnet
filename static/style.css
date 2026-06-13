@@ -393,8 +393,9 @@ body {
 
 .header-info h2 {
     font-family: var(--font-heading);
-    font-size: 22px;
-    font-weight: 700;
+    font-size: 26px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
     color: var(--text-primary);
 }
 
@@ -1404,7 +1405,7 @@ tr.status-rechazado td:first-child { border-left: 3px solid var(--danger); }
     }
     
     .header-info h2 {
-        font-size: 18px !important;
+        font-size: 22px !important;
     }
     
     /* Ocultar breadcrumb en celus muy chicos si molesta, pero se ve bien */
@@ -1418,31 +1419,42 @@ tr.status-rechazado td:first-child { border-left: 3px solid var(--danger); }
     /* Header optimization */
     .main-header {
         height: auto !important;
-        padding: 20px !important;
-        flex-direction: column !important;
-        align-items: stretch !important;
-        gap: 16px !important;
+        min-height: 80px !important;
+        padding: 16px 20px !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        gap: 12px !important;
     }
     
     .header-actions {
         flex-direction: row !important;
         align-items: center !important;
-        justify-content: space-between !important;
-        gap: 12px !important;
-        width: 100% !important;
+        justify-content: flex-end !important;
+        gap: 8px !important;
+        width: auto !important;
     }
     
     .auth-section {
-        flex-grow: 1 !important;
+        flex-grow: 0 !important;
         width: auto !important;
     }
     
     .auth-profile {
-        flex-grow: 1 !important;
         width: auto !important;
         justify-content: flex-start !important;
-        gap: 8px !important;
-        padding: 4px 8px !important;
+        gap: 6px !important;
+        padding: 4px 6px !important;
+        border-radius: 20px !important;
+    }
+    
+    .user-details {
+        display: none !important;
+    }
+    
+    .plan-badge {
+        padding: 2px 6px !important;
+        font-size: 9px !important;
     }
     
     .user-name,
