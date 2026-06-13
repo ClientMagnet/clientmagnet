@@ -1286,7 +1286,7 @@ tr.status-rechazado td:first-child { border-left: 3px solid var(--danger); }
     .sidebar-tab-btn {
         display: flex !important;
         position: fixed !important;
-        top: 140px;
+        top: 240px;
         left: 0;
         width: 44px;
         height: 56px;
@@ -1425,26 +1425,48 @@ tr.status-rechazado td:first-child { border-left: 3px solid var(--danger); }
     }
     
     .header-actions {
-        flex-direction: column-reverse !important;
-        align-items: stretch !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: space-between !important;
         gap: 12px !important;
         width: 100% !important;
     }
     
     .auth-section {
-        justify-content: space-between !important;
-        width: 100% !important;
+        flex-grow: 1 !important;
+        width: auto !important;
     }
     
     .auth-profile {
-        width: 100% !important;
-        justify-content: space-between !important;
+        flex-grow: 1 !important;
+        width: auto !important;
+        justify-content: flex-start !important;
+        gap: 8px !important;
+        padding: 4px 8px !important;
+    }
+    
+    .user-name,
+    .user-email {
+        max-width: 90px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
     
     #exportBtn {
-        width: 100% !important;
+        width: 42px !important;
+        height: 42px !important;
+        padding: 0 !important;
         justify-content: center !important;
-        padding: 12px !important;
+        align-items: center !important;
+        display: flex !important;
+        border-radius: var(--radius-md) !important;
+        flex-shrink: 0 !important;
+        gap: 0 !important;
+    }
+    
+    .btn-export-text {
+        display: none !important;
     }
 
     /* Filter optimization */
