@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ClientMagnet | Lead Generator & Copywriter</title>
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧲</text></svg>">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Stylesheet -->
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar / Control Panel -->
+        <aside class="sidebar">
+            <div class="brand">
+                <div class="logo-icon"><i class="fa-solid fa-magnet"></i></div>
+                <div class="brand-text">
+                    <h1>ClientMagnet</h1>
+                    <span>B2B Lead Generator</span>
+                </div>
+            </div>
+            
+            <div class="theme-selector-container">
+                <span><i class="fa-solid fa-palette"></i> Tema</span>
+                <div class="theme-buttons">
+                    <button type="button" class="theme-btn theme-light" data-theme="theme-light" title="Modo Claro"><i class="fa-solid fa-sun"></i></button>
+                    <button type="button" class="theme-btn theme-dark" data-theme="theme-dark" title="Modo Oscuro"><i class="fa-solid fa-moon"></i></button>
+                    <button type="button" class="theme-btn theme-violet active" data-theme="theme-violet" title="Modo Violeta"><i class="fa-solid fa-wand-magic-sparkles"></i></button>
+                </div>
+            </div>
+            
+            <form id="prospectForm" class="control-form">
+                <div class="form-group">
+                    <label for="nicho"><i class="fa-solid fa-briefcase"></i> Nicho Comercial</label>
+                    <input type="text" id="nicho" placeholder="Ej: Centros de estética, Gimnasios" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="ciudad"><i class="fa-solid fa-city"></i> Ciudad</label>
+                    <input type="text" id="ciudad" placeholder="Ej: Córdoba, Buenos Aires, Rosario" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="zona"><i class="fa-solid fa-location-dot"></i> Zona de Búsqueda</label>
+                    <input type="text" id="zona" placeholder="Ej: Cerro de las Rosas, Nueva Córdoba" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="servicio"><i class="fa-solid fa-handshake"></i> Servicio que Ofreces</label>
+                    <input type="text" id="servicio" value="Desarrollo Web" placeholder="Ej: Desarrollo Web, Community Manager, Empleado, etc." list="typical-services" required>
+                    <datalist id="typical-services">
+                        <option value="Desarrollo Web"></option>
+                        <option value="Community Manager"></option>
+                        <option value="Gestión de Redes Sociales"></option>
+                        <option value="Empleado Administrativo"></option>
+                        <option value="Recepcionista"></option>
+                        <option value="Asistente Virtual"></option>
+                        <option value="Diseñador Gráfico"></option>
+                        <option value="Especialista en Marketing/Ads"></option>
+                        <option value="Vendedor / Comercial"></option>
+                        <option value="Fotógrafo / Filmmaker"></option>
+                    </datalist>
+                    <span id="servicioError" class="error-msg" style="display: none; font-size: 11px; color: var(--danger); margin-top: 4px;">
+                        <i class="fa-solid fa-circle-xmark"></i> Servicio no válido. Por favor, introduce un servicio profesional típico.
+                    </span>
+                </div>
+                
+                <div class="form-group">
+                    <label for="cantidad"><i class="fa-solid fa-list-ol"></i> Cantidad de Leads (Máx 50)</label>
+                    <input type="number" id="cantidad" min="1" max="50" value="20" required>
+                    <span style="font-size: 10px; color: var(--text-secondary); margin-top: 4px; display: block; line-height: 1.3;">
+                        <i class="fa-solid fa-shield-halved"></i> Recomendación: Envía máximo 15-20 propuestas diarias con cuentas nuevas para evitar suspensiones.
+                    </span>
+                </div>
+                
+                <div class="form-group">
+                    <label for="estiloMensaje"><i class="fa-solid fa-wand-magic-sparkles"></i> Estilo del Mensaje</label>
+                    <select id="estiloMensaje" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border); background-color: var(--bg-card); color: var(--text-primary); font-family: inherit; outline: none; font-size: 13px;">
+                        <option value="argentino" selected>Argentino Cercano (Voseo)</option>
+                        <option value="corporativo">Neutro Corporativo</option>
+                        <option value="hibrido">Híbrido Sobrio</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="apiKey">
+                        <i class="fa-solid fa-key"></i> Gemini API Key (Opcional)
+                        <span class="tooltip-icon" title="Si agregas tu API Key, la propuesta comercial se redactará usando Inteligencia Artificial adaptándose específicamente al nombre y rubro del negocio de forma avanzada. Si no la colocas, se usará una plantilla optimizada."><i class="fa-solid fa-circle-info"></i></span>
+                    </label>
+                    <input type="password" id="apiKey" placeholder="AIzaSy...">
+                </div>
+                
+                <button type="submit" id="submitBtn" class="btn btn-primary">
+                    <span class="btn-text"><i class="fa-solid fa-magnifying-glass"></i> Buscar y Generar</span>
+                    <span class="spinner"><i class="fa-solid fa-circle-notch fa-spin"></i></span>
+                </button>
+            </form>
+            
+            <!-- Guía de Límites de WhatsApp -->
+            <div class="spam-guide-card">
+                <div class="spam-guide-header" id="spamGuideToggle">
+                    <span><i class="fa-solid fa-shield-halved"></i> Guía contra Spam de WhatsApp</span>
+                    <i class="fa-solid fa-chevron-down toggle-icon"></i>
+                </div>
+                <div class="spam-guide-content" id="spamGuideContent" style="display: none;">
+                    <p>WhatsApp analiza el comportamiento para detectar spam en cuentas personales. Pautas clave:</p>
+                    <ul>
+                        <li><i class="fa-solid fa-circle-info"></i> <strong>Límites Recomendados:</strong>
+                            <ul>
+                                <li>Cuentas Nuevas: <strong>15-20 mensajes/día</strong>.</li>
+                                <li>Cuentas Activas: <strong>30-50 mensajes/día</strong>.</li>
+                            </ul>
+                        </li>
+                        <li><i class="fa-solid fa-shuffle"></i> <strong>Personalización:</strong> No envíes textos idénticos. Nuestra app los varía según el nicho y dolor del negocio.</li>
+                        <li><i class="fa-solid fa-clock"></i> <strong>Envío Manual Espaciado:</strong> Envía los mensajes uno a uno en la ventana de chat con pausas de 1 minuto.</li>
+                        <li><i class="fa-solid fa-comments"></i> <strong>Generar Interacción:</strong> Si te responden, el algoritmo elimina las alertas de spam para ese contacto.</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="stats-panel" id="statsPanel" style="display: none;">
+                <h3><i class="fa-solid fa-chart-simple"></i> Métricas de Sesión</h3>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <span class="stat-val" id="statLeads">0</span>
+                        <span class="stat-lbl">Leads Obtenidos</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-val" id="statContactados">0</span>
+                        <span class="stat-lbl">Contactados</span>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <header class="main-header">
+                <div class="header-info">
+                    <h2 style="display: flex; align-items: center; gap: 10px;"><i class="fa-solid fa-magnet" style="color: var(--primary);"></i>Panel de Prospección</h2>
+                    <p id="searchBreadcrumb">Inicia una búsqueda para extraer prospectos de Google Maps</p>
+                </div>
+                <div class="header-actions" style="display: flex; align-items: center; gap: 20px;">
+                    <div class="auth-section" id="authSection"></div>
+                    <button id="exportBtn" class="btn btn-success" disabled>
+                        <i class="fa-solid fa-file-excel"></i> Exportar a Excel
+                    </button>
+                </div>
+            </header>
+
+            <!-- Filtros Inteligentes -->
+            <div class="filter-bar" id="filterBar" style="display: none;">
+                <div class="filter-group">
+                    <label class="checkbox-container">
+                        <input type="checkbox" id="hidePremiumLeads">
+                        <span class="checkmark"></span>
+                        <i class="fa-solid fa-filter"></i> Ocultar prospectos con Calidad excelente (>70)
+                    </label>
+                    <span class="filter-info" id="filterInfo">Mostrando todos los leads.</span>
+                </div>
+            </div>
+
+            <!-- Loading State -->
+            <div class="loading-overlay" id="loadingOverlay">
+                <div class="loader-box">
+                    <div class="loader-animation">
+                        <div class="circle"></div>
+                        <div class="circle"></div>
+                        <div class="circle"></div>
+                    </div>
+                    <h3>Buscando en Google Maps...</h3>
+                    <p>Estamos extrayendo negocios reales y descartando los que no tienen teléfono comercial.</p>
+                    <span class="loader-subtitle">Esto puede tardar unos segundos, por favor no cierres la ventana.</span>
+                </div>
+            </div>
+
+            <!-- Empty State -->
+            <div class="empty-state" id="emptyState">
+                <div class="empty-icon"><i class="fa-solid fa-map-location-dot"></i></div>
+                <h3>Sin leads cargados</h3>
+                <p>Completa el formulario en el panel izquierdo para buscar prospectos verídicos y generar propuestas hiper-personalizadas de desarrollo web.</p>
+            </div>
+
+            <!-- Leads Grid/Table -->
+            <div class="table-container" id="tableContainer" style="display: none;">
+                <table class="leads-table" id="leadsTable">
+                    <thead>
+                        <tr>
+                            <th class="col-name"><i class="fa-solid fa-shop"></i> Negocio</th>
+                            <th class="col-phone"><i class="fa-solid fa-phone"></i> Teléfono</th>
+                            <th class="col-calidad"><i class="fa-solid fa-star"></i> Calidad</th>
+                            <th class="col-address"><i class="fa-solid fa-location-dot"></i> Ubicación</th>
+                            <th class="col-message"><i class="fa-solid fa-comment-dots"></i> Propuesta Generada por IA</th>
+                            <th class="col-action"><i class="fa-solid fa-share-nodes"></i> Enlace de WhatsApp</th>
+                            <th class="col-status"><i class="fa-solid fa-circle-check"></i> Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leadsTableBody">
+                        <!-- Leads loaded dynamically -->
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="toast">
+        <i id="toastIcon" class="fa-solid"></i>
+        <span id="toastMessage">Mensaje</span>
+    </div>
+
+    <!-- Modal de Conversión a Premium -->
+    <div class="modal-overlay" id="premiumModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(8px); justify-content: center; align-items: center; z-index: 2000;">
+        <div class="upgrade-modal-box" style="background: var(--modal-bg); border: 1px solid var(--border-color); padding: 40px; border-radius: var(--radius-lg); width: 100%; max-width: 460px; box-shadow: 0 20px 50px rgba(0,0,0,0.3); position: relative; animation: scaleIn 0.3s ease-out; text-align: center;">
+            <div class="modal-close-btn" id="closePremiumModal" style="position: absolute; top: 20px; right: 20px; font-size: 20px; color: var(--text-secondary); cursor: pointer; transition: var(--transition);"><i class="fa-solid fa-xmark"></i></div>
+            <div class="upgrade-header" style="margin-bottom: 24px;">
+                <div class="upgrade-badge-icon" style="width: 60px; height: 60px; border-radius: 50%; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); display: flex; align-items: center; justify-content: center; font-size: 28px; color: #fff; margin: 0 auto 16px; box-shadow: 0 0 20px rgba(245, 158, 11, 0.4);"><i class="fa-solid fa-crown"></i></div>
+                <h2 style="font-family: var(--font-heading); font-size: 24px; font-weight: 700; color: var(--text-primary); margin-bottom: 8px;">ClientMagnet Premium</h2>
+                <p style="font-size: 14px; color: var(--text-secondary); line-height: 1.4;">Lleva tu prospección B2B al siguiente nivel sin límites diarios de leads.</p>
+            </div>
+            <div class="upgrade-content">
+                <div class="price-tag" style="margin-bottom: 24px; display: flex; justify-content: center; align-items: baseline; gap: 4px;">
+                    <span class="currency" style="font-size: 20px; font-weight: 600; color: var(--text-primary);">$</span>
+                    <span class="price-val" style="font-size: 44px; font-weight: 800; color: var(--text-primary); letter-spacing: -1px;">2.000</span>
+                    <span class="period" style="font-size: 14px; color: var(--text-secondary); font-weight: 500;">/ mes</span>
+                </div>
+                <ul class="features-list" style="text-align: left; list-style: none; padding: 0; margin: 0 0 30px 0; display: flex; flex-direction: column; gap: 12px;">
+                    <li style="display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--text-primary);"><i class="fa-solid fa-circle-check" style="color: var(--success); font-size: 16px;"></i> Búsquedas ilimitadas de leads diarios (sin tope de 40).</li>
+                    <li style="display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--text-primary);"><i class="fa-solid fa-circle-check" style="color: var(--success); font-size: 16px;"></i> Exportación completa a Excel sin restricciones.</li>
+                    <li style="display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--text-primary);"><i class="fa-solid fa-circle-check" style="color: var(--success); font-size: 16px;"></i> Acceso a filtros avanzados de calidad.</li>
+                    <li style="display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--text-primary);"><i class="fa-solid fa-circle-check" style="color: var(--success); font-size: 16px;"></i> Propuestas ultra-personalizadas por IA ilimitadas.</li>
+                </ul>
+                <button type="button" class="btn btn-primary" id="btnUpgradeAction" style="width: 100%; padding: 14px; font-size: 15px; font-weight: 600; background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%); border: none; box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);">
+                    <i class="fa-solid fa-wallet" style="margin-right: 8px;"></i> Adquirir Plan Premium
+                </button>
+                <span class="secure-checkout" style="display: block; margin-top: 16px; font-size: 11px; color: var(--text-secondary);"><i class="fa-solid fa-lock" style="margin-right: 4px;"></i> Pago seguro de $2000 ARS. Cancelación en un clic.</span>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/script.js"></script>
+</body>
+</html>

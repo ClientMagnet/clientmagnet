@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acceder a ClientMagnet</title>
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧲</text></svg>">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Main Style Sheet (for variables & baseline theme rules) -->
+    <link rel="stylesheet" href="/static/style.css">
+    <!-- Google Identity Services SDK -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    
+    <style>
+        body.login-page-body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            background-color: var(--bg-main);
+            font-family: var(--font-body);
+            color: var(--text-primary);
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Ambient glows matching index.html */
+        .login-page-body::before,
+        .login-page-body::after {
+            content: '';
+            position: absolute;
+            width: 500px;
+            height: 500px;
+            border-radius: 50%;
+            z-index: 1;
+            filter: blur(140px);
+            pointer-events: none;
+            opacity: 0.8;
+        }
+        
+        .login-page-body::before {
+            top: -150px;
+            left: -100px;
+            background: var(--radial-1);
+        }
+        
+        .login-page-body::after {
+            bottom: -150px;
+            right: -100px;
+            background: var(--radial-2);
+        }
+
+        .login-container {
+            position: relative;
+            z-index: 10;
+            width: 100%;
+            max-width: 440px;
+            animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .btn-back {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 24px;
+            transition: var(--transition);
+        }
+
+        .btn-back:hover {
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+
+        .login-card {
+            background: var(--bg-panel);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            transition: var(--transition);
+        }
+
+        .login-card:hover {
+            border-color: var(--border-hover-color);
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.35);
+        }
+
+        .brand-section {
+            margin-bottom: 30px;
+        }
+
+        .logo-wrapper {
+            width: 64px;
+            height: 64px;
+            border-radius: 16px;
+            background: var(--accent-gradient);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 30px;
+            color: #fff;
+            margin-bottom: 16px;
+            box-shadow: 0 8px 20px var(--primary-glow);
+            animation: pulseLogo 3s infinite ease-in-out;
+        }
+
+        .brand-name {
+            font-family: var(--font-heading);
+            font-size: 28px;
+            font-weight: 800;
+            background: var(--brand-text-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin: 0 0 6px 0;
+            letter-spacing: -0.5px;
+        }
+
+        .brand-subtitle {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin: 0;
+        }
+
+        .alert-banner {
+            background: rgba(99, 102, 241, 0.08);
+            border: 1px solid rgba(99, 102, 241, 0.25);
+            color: var(--text-primary);
+            padding: 12px 16px;
+            border-radius: var(--radius-md);
+            font-size: 13.5px;
+            line-height: 1.4;
+            margin-bottom: 28px;
+            text-align: left;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            animation: slideDown 0.4s ease;
+        }
+
+        .alert-banner i {
+            color: var(--primary);
+            font-size: 16px;
+            margin-top: 2px;
+        }
+
+        .btn-google-container {
+            display: flex;
+            justify-content: center;
+            margin: 24px 0;
+            min-height: 44px;
+        }
+
+        .separator {
+            display: flex;
+            align-items: center;
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin: 24px 0;
+        }
+
+        .separator::before,
+        .separator::after {
+            content: '';
+            flex: 1;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .separator:not(:empty)::before {
+            margin-right: .5em;
+        }
+
+        .separator:not(:empty)::after {
+            margin-left: .5em;
+        }
+
+        .btn-demo {
+            width: 100%;
+            padding: 12px 20px;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            border-radius: var(--radius-md);
+            font-size: 14px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-demo:hover {
+            background: var(--card-hover-bg);
+            border-color: var(--border-hover-color);
+            transform: translateY(-2px);
+        }
+
+        .btn-demo:active {
+            transform: translateY(0);
+        }
+
+        .secure-footer {
+            margin-top: 30px;
+            font-size: 11px;
+            color: var(--text-secondary);
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            border-top: 1px solid var(--border-color);
+            padding-top: 20px;
+        }
+
+        .secure-footer span {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .secure-footer i {
+            color: var(--success);
+        }
+
+        /* Error box toast within card */
+        .card-error {
+            display: none;
+            background: rgba(239, 68, 68, 0.08);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            color: var(--text-primary);
+            padding: 10px 14px;
+            border-radius: var(--radius-md);
+            font-size: 12px;
+            margin-bottom: 16px;
+            text-align: left;
+            align-items: center;
+            gap: 8px;
+            animation: shake 0.4s ease;
+        }
+
+        .card-error i {
+            color: var(--danger);
+            font-size: 14px;
+        }
+
+        /* Loading Overlay inside Card */
+        .card-loader {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--bg-panel);
+            backdrop-filter: blur(10px);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 16px;
+            border-radius: var(--radius-lg);
+        }
+
+        .login-card.loading-state .card-loader {
+            display: flex;
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes pulseLogo {
+            0%, 100% { transform: scale(1); box-shadow: 0 8px 20px var(--primary-glow); }
+            50% { transform: scale(1.04); box-shadow: 0 8px 25px rgba(99, 102, 241, 0.55); }
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-6px); }
+            75% { transform: translateX(6px); }
+        }
+    </style>
+</head>
+<body class="login-page-body animate-theme">
+    
+    <div class="login-container">
+        <a href="/" class="btn-back">
+            <i class="fa-solid fa-arrow-left"></i> Volver al panel de control
+        </a>
+        
+        <div class="login-card" id="loginCard">
+            <!-- Loading Screen inside Card -->
+            <div class="card-loader">
+                <div class="spinner-login" style="width: 40px; height: 40px; border: 3px solid rgba(99, 102, 241, 0.1); border-radius: 50%; border-top-color: var(--primary); animation: spin 1s ease-in-out infinite;"></div>
+                <h4 style="margin: 0; font-family: var(--font-heading); font-size: 16px; color: var(--text-primary);">Verificando credenciales...</h4>
+                <p style="margin: 0; font-size: 12px; color: var(--text-secondary);">Iniciando sesión segura en ClientMagnet</p>
+            </div>
+            
+            <div class="brand-section">
+                <div class="logo-wrapper">
+                    <i class="fa-solid fa-magnet"></i>
+                </div>
+                <h2 class="brand-name">ClientMagnet</h2>
+                <p class="brand-subtitle">Plataforma Inteligente de Prospección B2B</p>
+            </div>
+
+            <!-- Toast-like error display -->
+            <div class="card-error" id="cardError">
+                <i class="fa-solid fa-circle-exclamation"></i>
+                <span id="errorMessage">Error al procesar la sesión.</span>
+            </div>
+
+            <!-- Alert banner shown if user was redirected because they clicked search -->
+            <div class="alert-banner" id="redirectAlert" style="display: none;">
+                <i class="fa-solid fa-circle-info"></i>
+                <span><strong>Inicio requerido:</strong> Para buscar nuevos leads y generar propuestas automatizadas con IA, necesitás acceder a tu cuenta.</span>
+            </div>
+
+            <h3 style="font-family: var(--font-heading); font-size: 18px; font-weight: 600; color: var(--text-primary); margin: 0 0 10px 0;">Iniciar sesión o Registrarse</h3>
+            <p style="font-size: 13px; color: var(--text-secondary); margin: 0 0 24px 0; line-height: 1.4;">Accedé de forma directa para guardar tus filtros de calidad, propuestas redactadas y leads extraídos.</p>
+
+            <!-- Google GIS Button Integration -->
+            <div class="btn-google-container">
+                <div id="g_id_onload"
+                     data-client_id="{{ google_client_id }}"
+                     data-context="signin"
+                     data-ux_mode="popup"
+                     data-callback="handleCredentialResponse"
+                     data-auto_prompt="false">
+                </div>
+                <div class="g_id_signin"
+                     data-type="standard"
+                     data-shape="rectangular"
+                     data-theme="filled_blue"
+                     data-text="signin_with"
+                     data-size="large"
+                     data-logo_alignment="left"
+                     data-width="280">
+                </div>
+            </div>
+
+            <div class="separator">ó</div>
+
+            <!-- Local Developer Demo Bypass -->
+            <button type="button" class="btn-demo" id="btnDemoLogin">
+                <i class="fa-solid fa-laptop-code"></i> Acceder en Modo Demo
+            </button>
+
+            <div class="secure-footer">
+                <span><i class="fa-solid fa-circle-check"></i> Conexión de identidad encriptada de Google</span>
+                <span>Procesado bajo estrictas directivas de privacidad de ClientMagnet.</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Apply saved theme immediately to prevent flashing
+        const savedTheme = localStorage.getItem("clientmagnet-theme") || "theme-violet";
+        document.body.classList.remove("theme-light", "theme-dark", "theme-violet");
+        document.body.classList.add(savedTheme);
+
+        // Check if user was redirected from search block
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('redirected') === 'true') {
+            document.getElementById("redirectAlert").style.display = "flex";
+        }
+
+        // Show local error box
+        function showLocalError(message) {
+            const errorBox = document.getElementById("cardError");
+            const errorMessage = document.getElementById("errorMessage");
+            errorMessage.textContent = message;
+            errorBox.style.display = "flex";
+            
+            // Auto hide error after 5 seconds
+            setTimeout(() => {
+                errorBox.style.display = "none";
+            }, 5000);
+        }
+
+        // Real Google Login Credentials Callback
+        async function handleCredentialResponse(response) {
+            const loginCard = document.getElementById("loginCard");
+            loginCard.classList.add("loading-state");
+            
+            try {
+                const res = await fetch("/api/auth/google", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ credential: response.credential })
+                });
+                
+                const result = await res.json();
+                if (res.ok && result.status === "success") {
+                    // Sync localStorage state
+                    localStorage.setItem("clientmagnet-logged-in", "true");
+                    localStorage.setItem("clientmagnet-user-name", result.user.name);
+                    localStorage.setItem("clientmagnet-user-email", result.user.email);
+                    localStorage.setItem("clientmagnet-plan-type", result.user.plan);
+                    localStorage.setItem("clientmagnet-leads-consumed", result.user.leads_consumed);
+                    
+                    // Redirect to home dashboard
+                    window.location.href = "/";
+                } else {
+                    showLocalError(result.message || "Error al verificar la cuenta de Google.");
+                    loginCard.classList.remove("loading-state");
+                }
+            } catch (err) {
+                console.error("Auth Error:", err);
+                showLocalError("No se pudo conectar con el servidor para verificar las credenciales.");
+                loginCard.classList.remove("loading-state");
+            }
+        }
+
+        // Local Demo/Developer Login Callback
+        document.getElementById("btnDemoLogin").addEventListener("click", async () => {
+            const loginCard = document.getElementById("loginCard");
+            loginCard.classList.add("loading-state");
+            
+            try {
+                const res = await fetch("/api/auth/demo", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    }
+                });
+                
+                const result = await res.json();
+                if (res.ok && result.status === "success") {
+                    // Sync localStorage state
+                    localStorage.setItem("clientmagnet-logged-in", "true");
+                    localStorage.setItem("clientmagnet-user-name", result.user.name);
+                    localStorage.setItem("clientmagnet-user-email", result.user.email);
+                    localStorage.setItem("clientmagnet-plan-type", result.user.plan);
+                    localStorage.setItem("clientmagnet-leads-consumed", result.user.leads_consumed);
+                    
+                    window.location.href = "/";
+                } else {
+                    showLocalError(result.message || "Error al iniciar sesión en modo demo.");
+                    loginCard.classList.remove("loading-state");
+                }
+            } catch (err) {
+                console.error("Demo Auth Error:", err);
+                showLocalError("No se pudo conectar con el servidor para iniciar sesión en modo demo.");
+                loginCard.classList.remove("loading-state");
+            }
+        });
+    </script>
+</body>
+</html>

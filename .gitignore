@@ -1,0 +1,23 @@
+# Configuración de credenciales de Google (Privado)
+config.json
+
+# Base de datos de usuarios local
+users.json
+
+# Logs del servidor y de errores
+*.log
+server_errors.log
+
+# Caché de Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Entornos virtuales
+venv/
+.venv/
+env/
+
+# Carpetas de configuración de editores
+.vscode/
+.idea/
