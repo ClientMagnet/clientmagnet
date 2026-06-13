@@ -262,17 +262,32 @@ def get_best_links(urls):
         "other_social": other_social_url
     }
 
-def fallback_search_socials(business_name, city, platform="instagram"):
-    # Limpiar caracteres especiales para evitar ruidos en la búsqueda
-    clean_name = re.sub(r'[^\w\s]', '', business_name)
-    query = f"{clean_name} {city} {platform}"
+def fallback_search_socials(business_name, city, platform="instagram", zona=None):
+    # Limpiar caracteres especiales y separadores típicos para evitar ruidos en la búsqueda
+    name_clean = business_name
+    for sep in ["-", "|", ":"]:
+        if sep in name_clean:
+            name_clean = name_clean.split(sep)[0]
+            
+    clean_name = re.sub(r'[^\w\s]', '', name_clean)
+    clean_name = " ".join(clean_name.split())
+    
+    # Construir consulta con zona y ciudad para mayor precisión
+    location_parts = []
+    if zona and zona.lower() not in city.lower():
+        location_parts.append(zona)
+    location_parts.append(city)
+    location_str = " ".join(location_parts)
+    
+    query = f"{clean_name} {location_str} {platform}"
     
     # Intentar con DuckDuckGo primero
     ddg_url = f"https://html.duckduckgo.com/html/?q={urllib.parse.quote(query)}"
     try:
         resp = requests.get(ddg_url, headers=HEADERS, timeout=5)
         if resp.status_code == 200:
-            html = resp.text
+            # Descodificar URL-encoded en el HTML para evitar redirecciones codificadas en href (uddg=https%3A%2F%2F...)
+            html = urllib.parse.unquote(resp.text)
             pattern = r'https?://(?:www\.)?' + (r'instagram\.com' if platform == "instagram" else r'facebook\.com') + r'/[a-zA-Z0-9_\.\-]+'
             links = re.findall(pattern, html, re.IGNORECASE)
             filtered = []
@@ -291,7 +306,7 @@ def fallback_search_socials(business_name, city, platform="instagram"):
     try:
         resp = requests.get(bing_url, headers=HEADERS, timeout=5)
         if resp.status_code == 200:
-            html = resp.text
+            html = urllib.parse.unquote(resp.text)
             pattern = r'https?://(?:www\.)?' + (r'instagram\.com' if platform == "instagram" else r'facebook\.com') + r'/[a-zA-Z0-9_\.\-]+'
             links = re.findall(pattern, html, re.IGNORECASE)
             filtered = []
@@ -305,6 +320,113 @@ def fallback_search_socials(business_name, city, platform="instagram"):
     except Exception:
         pass
         
+    return None
+
+def fallback_search_website(business_name, city, zona=None):
+    # Limpiar nombre
+    name_clean = business_name
+    for sep in ["-", "|", ":"]:
+        if sep in name_clean:
+            name_clean = name_clean.split(sep)[0]
+            
+    clean_name = re.sub(r'[^\w\s]', '', name_clean)
+    clean_name = " ".join(clean_name.split())
+    
+    location_parts = []
+    if zona and zona.lower() not in city.lower():
+        location_parts.append(zona)
+    location_parts.append(city)
+    location_str = " ".join(location_parts)
+    
+    query = f"{clean_name} {location_str} sitio oficial"
+    
+    ddg_url = f"https://html.duckduckgo.com/html/?q={urllib.parse.quote(query)}"
+    try:
+        resp = requests.get(ddg_url, headers=HEADERS, timeout=5)
+        if resp.status_code == 200:
+            html = urllib.parse.unquote(resp.text)
+            
+            href_pattern = r'href="([^"]+)"'
+            links = re.findall(href_pattern, html)
+            
+            for link in links:
+                if link.startswith("http"):
+                    link_lower = link.lower()
+                    # Descartar si es buscador, red social o directorios de spam
+                    if not any(x in link_lower for x in [
+                        "instagram.com", "facebook.com", "wa.link", "whatsapp.com", "linktr.ee",
+                        "youtube.com", "duckduckgo.com", "google.com", "bing.com", "yahoo.com",
+                        "linkedin.com", "twitter.com", "pinterest.com", "yelp.", "tripadvisor.",
+                        "paginasamarillas", "mercadolibre", "pedidosya", "rappi", "wikipedia.org",
+                        "github.com", "microsoft.com", "apple.com", "t.co"
+                    ]):
+                        domain = urllib.parse.urlparse(link).netloc.lower()
+                        domain_clean = domain.replace("www.", "")
+                        
+                        # Si contiene al menos una palabra clave significativa del nombre comercial
+                        words = [w for w in clean_name.lower().split() if len(w) > 3]
+                        if words and any(w in domain_clean for w in words):
+                            return link
+    except Exception as e:
+        print(f"Error en fallback_search_website: {e}")
+        
+    return None
+
+def gemini_search_socials_and_web(api_key, name, city, zona=None):
+    location_parts = []
+    if zona and zona.lower() not in city.lower():
+        location_parts.append(zona)
+    location_parts.append(city)
+    location_str = " ".join(location_parts)
+    
+    prompt = f"""
+    Eres un asistente de búsqueda de datos comerciales. Tu tarea es encontrar los canales digitales oficiales de la siguiente empresa:
+    - Nombre de la empresa: "{name}"
+    - Ubicación: "{location_str}", Argentina
+    
+    Busca e identifica:
+    1. El sitio web oficial del negocio (ej. tienda online, dominio propio o Tiendanube). Si no tiene sitio web propio y solo usa redes, devuelve null. No consideres directorios de terceros (como Páginas Amarillas) ni su ficha de Maps como sitio web.
+    2. La cuenta oficial de Instagram del negocio.
+    3. La página oficial de Facebook del negocio.
+    
+    Devuelve estrictamente un objeto JSON con el siguiente formato, sin bloques de código ```json, sin comentarios y sin explicaciones adicionales:
+    {{
+      "website": "URL oficial o null",
+      "instagram": "URL oficial o null",
+      "facebook": "URL oficial o null"
+    }}
+    """
+    
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+    headers = {"Content-Type": "application/json"}
+    payload = {
+        "contents": [{
+            "parts": [{
+                "text": prompt
+            }]
+        }],
+        "tools": [{"google_search": {}}],
+        "generationConfig": {
+            "responseMimeType": "application/json"
+        }
+    }
+    
+    try:
+        resp = requests.post(url, headers=headers, json=payload, timeout=12)
+        if resp.status_code == 200:
+            res_data = resp.json()
+            text = res_data['candidates'][0]['content']['parts'][0]['text'].strip()
+            if text.startswith("```"):
+                text = re.sub(r'^```(?:json)?\s*', '', text)
+                text = re.sub(r'\s*```$', '', text)
+            info = json.loads(text.strip())
+            return {
+                "website": info.get("website") if info.get("website") and str(info.get("website")).lower() != "null" else None,
+                "instagram": info.get("instagram") if info.get("instagram") and str(info.get("instagram")).lower() != "null" else None,
+                "facebook": info.get("facebook") if info.get("facebook") and str(info.get("facebook")).lower() != "null" else None
+            }
+    except Exception as e:
+        print(f"Error en gemini_search_socials_and_web para '{name}': {e}")
     return None
 
 def analyze_website_socials_and_cms(url):
@@ -1044,7 +1166,7 @@ def upgrade_plan():
         return jsonify({"status": "error", "message": "Usuario no encontrado."}), 404
 
 
-def process_candidate_details(c, ciudad, servicio, nicho, api_key, estilo_mensaje="argentino", sender_name="Francisco"):
+def process_candidate_details(c, ciudad, servicio, nicho, api_key, estilo_mensaje="argentino", sender_name="Francisco", zona=None):
     web = c["website"]
     instagram = c["instagram"]
     facebook = c["facebook"]
@@ -1055,7 +1177,26 @@ def process_candidate_details(c, ciudad, servicio, nicho, api_key, estilo_mensaj
     has_ssl = False
     has_seo = False
     
-    # 1. Analizar sitio web si existe
+    # 0. Intentar buscar enlaces faltantes con Gemini Search Grounding en tiempo real si hay API Key
+    if api_key and (not web or not instagram or not facebook):
+        gemini_links = gemini_search_socials_and_web(api_key, c["name"], ciudad, zona=zona)
+        if gemini_links:
+            if not web and gemini_links.get("website"):
+                web = gemini_links["website"]
+            if not instagram and gemini_links.get("instagram"):
+                instagram = gemini_links["instagram"]
+            if not facebook and gemini_links.get("facebook"):
+                facebook = gemini_links["facebook"]
+
+    # 1. Fallbacks locales clásicos si siguen faltando enlaces
+    if not web:
+        web = fallback_search_website(c["name"], ciudad, zona=zona)
+    if not instagram:
+        instagram = fallback_search_socials(c["name"], ciudad, "instagram", zona=zona)
+    if not facebook:
+        facebook = fallback_search_socials(c["name"], ciudad, "facebook", zona=zona)
+        
+    # 2. Analizar sitio web si existe (sea original de Maps o descubierto en la búsqueda)
     if web:
         web_lower = web.lower()
         is_social = any(x in web_lower for x in ["instagram.com", "facebook.com", "wa.link", "whatsapp.com", "linktr.ee", "youtube.com"])
@@ -1080,14 +1221,6 @@ def process_candidate_details(c, ciudad, servicio, nicho, api_key, estilo_mensaj
             has_seo = True
     else:
         status = "no_url"
-        
-    # 2. Búsqueda de respaldo en redes si faltan
-    if not instagram:
-        instagram = fallback_search_socials(c["name"], ciudad, "instagram")
-        
-    # 3. Búsqueda de respaldo en Facebook si falta
-    if not facebook:
-        facebook = fallback_search_socials(c["name"], ciudad, "facebook")
         
     # 4. Calcular puntuación determinista
     calidad_score, calidad_motivo = calculate_service_score(
@@ -1317,7 +1450,7 @@ def search_businesses():
         extracted_businesses = []
         with ThreadPoolExecutor(max_workers=15) as executor:
             futures = [
-                executor.submit(process_candidate_details, c, ciudad, servicio, nicho, api_key, estilo_mensaje, sender_name)
+                executor.submit(process_candidate_details, c, ciudad, servicio, nicho, api_key, estilo_mensaje, sender_name, zona)
                 for c in candidates
             ]
             extracted_businesses = [f.result() for f in futures]
