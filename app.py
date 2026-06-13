@@ -215,8 +215,38 @@ def extract_all_external_urls(obj):
                     found.add(obj)
     return found
 
-def get_best_links(urls):
-    primary_website = None
+def check_url_matches_name(url, business_name):
+    import unicodedata
+    def strip_accents(text):
+        return ''.join(c for c in unicodedata.normalize('NFD', text) if unicodedata.category(c) != 'Mn')
+
+    url_lower = strip_accents(url.lower())
+    name_clean = strip_accents(business_name.lower())
+    for sep in ["-", "|", ":"]:
+        if sep in name_clean:
+            name_clean = name_clean.split(sep)[0]
+    name_clean = re.sub(r'[^\w\s]', '', name_clean)
+    
+    # Lista de palabras genéricas de rubro o ubicación que no identifican de forma única al local
+    GENERIC_WORDS = {
+        "dietetica", "almacen", "natural", "estetica", "laser", "clinica", "odontologica", "spa", "relax",
+        "saludable", "tienda", "local", "comercio", "negocio", "rubro", "servicio", "productos", "habito", "vida",
+        "caba", "buenos", "aires", "argentina", "cordoba", "palermo", "caballito", "belgrano", "pueyrredon",
+        "villa", "norte", "sur", "este", "oeste", "centro", "avenida", "calle", "habitos", "para", "con", "del"
+    }
+    
+    words = [w for w in name_clean.split() if len(w) >= 3 and w not in GENERIC_WORDS]
+    if not words:
+        return True  # Permitir por defecto si solo consiste en palabras genéricas
+    
+    clean_url = url_lower
+    for domain in ["instagram.com", "facebook.com", "twitter.com", "linkedin.com", "youtube.com", "linktr.ee", "wa.me", "whatsapp.com", "http", "https", "www."]:
+        clean_url = clean_url.replace(domain, "")
+        
+    return any(w in clean_url for w in words)
+
+def get_best_links(urls, business_name, maps_website=None):
+    primary_website = maps_website
     instagram_url = None
     facebook_url = None
     booking_url = None
@@ -227,6 +257,11 @@ def get_best_links(urls):
     
     for url in sorted_urls:
         url_lower = url.lower()
+        
+        # Validar que la URL pertenezca al local comercial antes de asociarla
+        if not check_url_matches_name(url, business_name):
+            continue
+            
         if "instagram.com" in url_lower:
             instagram_url = url
         elif "facebook.com" in url_lower:
@@ -239,7 +274,8 @@ def get_best_links(urls):
             other_social_url = url
         else:
             if not any(x in url_lower for x in ["business.google.com", "google.com/business", "google.com/maps"]):
-                primary_website = url
+                if not primary_website:
+                    primary_website = url
 
     if not primary_website:
         if instagram_url:
@@ -372,7 +408,7 @@ def fallback_search_website(business_name, city, zona=None):
         
     return None
 
-def gemini_search_socials_and_web(api_key, name, city, zona=None):
+def gemini_search_socials_and_web(api_key, name, city, zona=None, phone=None, address=None):
     location_parts = []
     if zona and zona.lower() not in city.lower():
         location_parts.append(zona)
@@ -380,21 +416,31 @@ def gemini_search_socials_and_web(api_key, name, city, zona=None):
     location_str = " ".join(location_parts)
     
     prompt = f"""
-    Eres un asistente de búsqueda de datos comerciales. Tu tarea es encontrar los canales digitales oficiales de la siguiente empresa:
-    - Nombre de la empresa: "{name}"
+    Eres un investigador profesional de datos comerciales (OSINT). Tu objetivo es encontrar con total certeza los canales digitales oficiales del siguiente comercio local:
+    - Nombre del comercio: "{name}"
     - Ubicación: "{location_str}", Argentina
+    - Dirección física: "{address or 'No disponible'}"
+    - Teléfono registrado: "{phone or 'No disponible'}"
     
-    Busca e identifica:
-    1. El sitio web oficial del negocio (ej. tienda online, dominio propio o Tiendanube). Si no tiene sitio web propio y solo usa redes, devuelve null. No consideres directorios de terceros (como Páginas Amarillas) ni su ficha de Maps como sitio web.
-    2. La cuenta oficial de Instagram del negocio.
-    3. La página oficial de Facebook del negocio.
+    INSTRUCCIONES DE BÚSQUEDA PROFESIONAL:
+    1. Ejecuta búsquedas en internet combinando diferentes términos en la barra de búsqueda de Google:
+       - El nombre del local junto con la ubicación e "instagram" o "sitio web".
+       - El teléfono registrado junto con "instagram" o "facebook" (las empresas suelen publicar su WhatsApp/teléfono de contacto en la biografía).
+       - La dirección o calle junto con el nombre del local para localizar sucursales.
     
-    Devuelve estrictamente un objeto JSON con el siguiente formato, sin bloques de código ```json, sin comentarios y sin explicaciones adicionales:
-    {{
-      "website": "URL oficial o null",
-      "instagram": "URL oficial o null",
-      "facebook": "URL oficial o null"
-    }}
+    2. REGLAS DE VALIDACIÓN DE IDENTIDAD:
+       - No asocies cuentas de Instagram de locales homónimos situados en otras ciudades o países (ej. si buscas en CABA, no relaciones una cuenta de Córdoba o de México).
+       - Verifica que el perfil de Instagram, Facebook o sitio web encontrado mencione la dirección física "{address or ''}", el teléfono "{phone or ''}", o al menos la zona "{zona or ''}" o ciudad "{city}".
+       - Si encuentras un agregador de enlaces (ej. Linktree, Linkbio, Instabio, Beacons, Flowcode), analízalo o busca qué enlaces contiene para extraer la cuenta de Instagram o Facebook real y el sitio web de ventas.
+       - Si encuentras un sitio de e-commerce propio (ej. Tiendanube, Mercado Shops, Empretienda) o un dominio propio activo (.com, .com.ar) que pertenezca inequívocamente al negocio, regístralo en "website". No consideres directorios de terceros (como Páginas Amarillas, Yelp, TripAdvisor) ni su propia ficha de Google Maps como sitio web.
+       
+    3. FORMATO DE SALIDA:
+       Devuelve estrictamente un objeto JSON con el siguiente formato, sin bloques de código ```json, sin comentarios y sin explicaciones adicionales:
+       {{
+         "website": "URL oficial completa o null",
+         "instagram": "URL oficial completa o null",
+         "facebook": "URL oficial completa o null"
+       }}
     """
     
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
@@ -1179,7 +1225,14 @@ def process_candidate_details(c, ciudad, servicio, nicho, api_key, estilo_mensaj
     
     # 0. Intentar buscar enlaces faltantes con Gemini Search Grounding en tiempo real si hay API Key
     if api_key and (not web or not instagram or not facebook):
-        gemini_links = gemini_search_socials_and_web(api_key, c["name"], ciudad, zona=zona)
+        gemini_links = gemini_search_socials_and_web(
+            api_key=api_key,
+            name=c["name"],
+            city=ciudad,
+            zona=zona,
+            phone=c.get("phone_original"),
+            address=c.get("address")
+        )
         if gemini_links:
             if not web and gemini_links.get("website"):
                 web = gemini_links["website"]
@@ -1418,9 +1471,14 @@ def search_businesses():
             # Limpiar Teléfono a formato internacional de WhatsApp
             phone_clean = clean_argentine_phone(phone_raw, default_area_code)
             
-            # Extraer URLs recursivamente y clasificar
+            # 1. Obtener sitio web oficial directo de la ficha de Maps si existe
+            maps_website = None
+            if len(info) > 7 and info[7] and isinstance(info[7], list) and len(info[7]) > 0:
+                maps_website = info[7][0]
+
+            # 2. Extraer otras URLs y clasificar aplicando validación de nombre
             all_urls = extract_all_external_urls(info)
-            links = get_best_links(all_urls)
+            links = get_best_links(all_urls, name, maps_website=maps_website)
             
             rating = None
             if len(info) > 4 and info[4] and isinstance(info[4], list) and len(info[4]) > 7:
