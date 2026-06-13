@@ -1277,6 +1277,10 @@ tr.status-rechazado td:first-child { border-left: 3px solid var(--danger); }
         box-shadow: 0 0 30px rgba(0, 0, 0, 0.5) !important;
         border-right: 1px solid var(--border-color) !important;
         border-bottom: none !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch;
+        padding: 20px 16px !important;
+        gap: 20px !important;
     }
     
     .sidebar.open {
@@ -1411,6 +1415,23 @@ tr.status-rechazado td:first-child { border-left: 3px solid var(--danger); }
     /* Ocultar breadcrumb en celus muy chicos si molesta, pero se ve bien */
     #searchBreadcrumb {
         font-size: 11px !important;
+    }
+    
+    .control-form {
+        gap: 14px !important;
+    }
+    
+    .form-group {
+        gap: 6px !important;
+    }
+    
+    .form-group input,
+    .form-group select {
+        padding: 10px 14px !important;
+    }
+    
+    .spam-guide-card {
+        margin-top: 10px !important;
     }
 }
 
