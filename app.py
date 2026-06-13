@@ -79,6 +79,14 @@ def get_user_profile(email, name=None, picture=None):
             
     return users[email]
 
+def extract_first_name(full_name):
+    if not full_name:
+        return "Francisco"
+    parts = full_name.strip().split()
+    if not parts:
+        return "Francisco"
+    return parts[0].capitalize()
+
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -480,7 +488,7 @@ def calculate_service_score(servicio, website, rating=None, instagram=None, face
             motivo = "Reputación Promedio"
         return score, motivo
 
-def generate_local_proposal(name, nicho, servicio, estilo_mensaje="argentino", ciudad=None, website=None, calidad_motivo=None, instagram=None, facebook=None):
+def generate_local_proposal(name, nicho, servicio, estilo_mensaje="argentino", ciudad=None, website=None, calidad_motivo=None, instagram=None, facebook=None, sender_name="Francisco"):
     if estilo_mensaje == "hibrido":
         has_custom_web = website and not any(x in website.lower() for x in ["instagram.com", "facebook.com", "wa.link", "whatsapp.com", "linktr.ee"])
         zona_text = ciudad if ciudad else "su zona"
@@ -686,7 +694,7 @@ def generate_local_proposal(name, nicho, servicio, estilo_mensaje="argentino", c
             f"Con respecto al nivel de profesionalismo que manejan, {pain}\n\n"
             f"Por esta razón, consideramos que les aportaría gran valor implementar {sol}\n\n"
             f"{cta}\n\n"
-            f"Saludos cordiales,\nFrancisco."
+            f"Saludos cordiales,\n{sender_name}."
         )
     else:
         # Propuesta en Estilo Argentino Cercano y Voseo
@@ -713,12 +721,12 @@ def generate_local_proposal(name, nicho, servicio, estilo_mensaje="argentino", c
             f"pero noté un detalle clave: {pain}\n\n"
             f"Por eso pensé que les vendría genial {sol}\n\n"
             f"{cta}\n\n"
-            f"Saludos, Francisco."
+            f"Saludos, {sender_name}."
         )
     
     return proposal
 
-def generate_with_gemini(api_key, name, nicho, ciudad, estado_digital, servicio, template_body, estilo_mensaje="argentino"):
+def generate_with_gemini(api_key, name, nicho, ciudad, estado_digital, servicio, template_body, estilo_mensaje="argentino", sender_name="Francisco"):
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
     headers = {"Content-Type": "application/json"}
     
@@ -749,7 +757,7 @@ def generate_with_gemini(api_key, name, nicho, ciudad, estado_digital, servicio,
         - Redacta en un español neutro, sofisticado y corporativo (Usa el "tú" o "ustedes" de forma sutil).
         - Estructura visualmente limpia para WhatsApp usando saltos de línea y negritas (`*texto*`) para conceptos clave. Máximo 1 emoji sobrio.
         - El mensaje debe ser directo, omitiendo introducciones genéricas automatizadas.
-        - Firma al final EXACTAMENTE como "Saludos cordiales,\nFrancisco." (sin añadidos de IA ni textos introductorios). El resultado debe ser directamente el mensaje listo para copiar y enviar.
+        - Firma al final EXACTAMENTE como "Saludos cordiales,\n{sender_name}." (sin añadidos de IA ni textos introductorios). El resultado debe ser directamente el mensaje listo para copiar y enviar.
         - Devuelve ÚNICAMENTE la propuesta final redactada en español, sin comentarios extras.
         """
     elif estilo_mensaje == "hibrido":
@@ -845,7 +853,7 @@ def generate_with_gemini(api_key, name, nicho, ciudad, estado_digital, servicio,
         - TONO: Argentino, casual, profesional pero muy cercano. Usa "voseo" de forma natural (ej: "cómo estás", "vi tu perfil", "pensaba", "tenés"). Nada de "Estimado" ni formalidades rígidas de venta.
         - GANCHO INICIAL (Primeras 2 líneas): Prohibido usar "Estuve viendo tu perfil y me pareció excelente..." o "Te contacto porque...". Empieza directo al grano mencionando el nombre específico del negocio ({name}) de forma orgánica.
         - Estructura visualmente limpia para WhatsApp usando saltos de línea y negritas (`*texto*`) para conceptos clave. Máximo 1 emoji sobrio.
-        - Firma al final EXACTAMENTE como "Saludos, Francisco." (sin añadidos de IA ni textos introductorios). El resultado debe ser directamente el mensaje listo para copiar y enviar.
+        - Firma al final EXACTAMENTE como "Saludos, {sender_name}." (sin añadidos de IA ni textos introductorios). El resultado debe ser directamente el mensaje listo para copiar y enviar.
         - Devuelve ÚNICAMENTE la propuesta final redactada en español, sin comentarios extras.
         """
     
@@ -995,7 +1003,7 @@ def upgrade_plan():
         return jsonify({"status": "error", "message": "Usuario no encontrado."}), 404
 
 
-def process_candidate_details(c, ciudad, servicio, nicho, api_key, estilo_mensaje="argentino"):
+def process_candidate_details(c, ciudad, servicio, nicho, api_key, estilo_mensaje="argentino", sender_name="Francisco"):
     web = c["website"]
     instagram = c["instagram"]
     facebook = c["facebook"]
@@ -1056,10 +1064,10 @@ def process_candidate_details(c, ciudad, servicio, nicho, api_key, estilo_mensaj
     )
     
     # 5. Generar propuestas
-    local_proposal = generate_local_proposal(c["name"], nicho, servicio, estilo_mensaje, ciudad, web, calidad_motivo, instagram, facebook)
+    local_proposal = generate_local_proposal(c["name"], nicho, servicio, estilo_mensaje, ciudad, web, calidad_motivo, instagram, facebook, sender_name=sender_name)
     proposal = None
     if api_key:
-        proposal = generate_with_gemini(api_key, c["name"], nicho, ciudad, calidad_motivo, servicio, local_proposal, estilo_mensaje)
+        proposal = generate_with_gemini(api_key, c["name"], nicho, ciudad, calidad_motivo, servicio, local_proposal, estilo_mensaje, sender_name=sender_name)
     if not proposal:
         proposal = local_proposal
         
@@ -1263,10 +1271,12 @@ def search_businesses():
 # Continuación de /api/search
         # Procesar todos los candidatos en paralelo para resolver webs, redes sociales, puntuaciones y propuestas
         estilo_mensaje = req_data.get("estilo_mensaje", "argentino").strip()
+        user_name = user_profile.get("name", user_session.get("name", "Francisco"))
+        sender_name = extract_first_name(user_name)
         extracted_businesses = []
         with ThreadPoolExecutor(max_workers=15) as executor:
             futures = [
-                executor.submit(process_candidate_details, c, ciudad, servicio, nicho, api_key, estilo_mensaje)
+                executor.submit(process_candidate_details, c, ciudad, servicio, nicho, api_key, estilo_mensaje, sender_name)
                 for c in candidates
             ]
             extracted_businesses = [f.result() for f in futures]
