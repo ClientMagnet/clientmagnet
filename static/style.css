@@ -1253,3 +1253,154 @@ tr.status-rechazado td:first-child { border-left: 3px solid var(--danger); }
     border: 2px solid var(--primary);
     box-shadow: 0 0 8px var(--primary-glow);
 }
+
+/* Mobile Responsive Overrides (< 768px) */
+@media (max-width: 768px) {
+    /* Header optimization */
+    .main-header {
+        height: auto !important;
+        padding: 20px !important;
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 16px !important;
+    }
+    
+    .header-actions {
+        flex-direction: column-reverse !important;
+        align-items: stretch !important;
+        gap: 12px !important;
+        width: 100% !important;
+    }
+    
+    .auth-section {
+        justify-content: space-between !important;
+        width: 100% !important;
+    }
+    
+    .auth-profile {
+        width: 100% !important;
+        justify-content: space-between !important;
+    }
+    
+    #exportBtn {
+        width: 100% !important;
+        justify-content: center !important;
+        padding: 12px !important;
+    }
+
+    /* Filter optimization */
+    .filter-bar {
+        padding: 16px 20px !important;
+    }
+    
+    .filter-group {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 10px !important;
+    }
+
+    /* Convert Table into Cards */
+    .table-container {
+        padding: 16px 20px !important;
+    }
+    
+    .leads-table, 
+    .leads-table thead, 
+    .leads-table tbody, 
+    .leads-table th, 
+    .leads-table td, 
+    .leads-table tr {
+        display: block !important;
+        width: 100% !important;
+    }
+    
+    .leads-table thead {
+        display: none !important; /* Hide headers */
+    }
+    
+    .leads-table tr {
+        margin-bottom: 24px !important;
+        border: 1px solid var(--border-color) !important;
+        border-radius: var(--radius-lg) !important;
+        background: var(--bg-panel) !important;
+        padding: 20px !important;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2) !important;
+        transition: var(--transition) !important;
+    }
+    
+    .leads-table tr:hover {
+        border-color: var(--border-hover-color) !important;
+        transform: translateY(-2px) !important;
+    }
+    
+    .leads-table td {
+        border: none !important;
+        padding: 12px 0 !important;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 6px !important;
+        text-align: left !important;
+    }
+    
+    .leads-table td:last-child {
+        border-bottom: none !important;
+        padding-bottom: 0 !important;
+    }
+    
+    /* Add labels on mobile using attr(data-label) */
+    .leads-table td::before {
+        content: attr(data-label);
+        font-family: var(--font-heading);
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        opacity: 0.8;
+    }
+    
+    /* Hide labels for Business Name & Whatsapp buttons for better layout */
+    .leads-table td[data-label="Negocio"]::before,
+    .leads-table td[data-label="Acción"]::before {
+        display: none !important;
+    }
+    
+    .business-name {
+        font-size: 16px !important;
+        margin-bottom: 2px !important;
+    }
+    
+    /* proposal textarea adjustment */
+    .proposal-textarea {
+        height: 110px !important;
+    }
+    
+    .btn-send-whatsapp {
+        width: 100% !important;
+        justify-content: center !important;
+        padding: 12px !important;
+        font-size: 13px !important;
+    }
+    
+    .status-select {
+        padding: 10px !important;
+        font-size: 13px !important;
+    }
+
+    /* Modal conversion optimization */
+    .upgrade-modal-box {
+        padding: 30px 20px !important;
+        margin: 15px !important;
+        width: calc(100% - 30px) !important;
+    }
+    
+    .price-tag {
+        margin-bottom: 16px !important;
+    }
+    
+    .price-val {
+        font-size: 36px !important;
+    }
+}

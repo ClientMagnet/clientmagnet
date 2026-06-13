@@ -243,7 +243,7 @@ function renderLeads(nicho, ciudad, zona) {
         const calidadClass = getCalidadClass(lead.calidad_score);
         
         tr.innerHTML = `
-            <td>
+            <td data-label="Negocio">
                 <div class="business-name">${lead.name}</div>
                 <div class="business-links-container" style="display: flex; flex-direction: column; gap: 4px; margin-top: 6px;">
                     ${lead.website ? (
@@ -275,11 +275,11 @@ function renderLeads(nicho, ciudad, zona) {
                     ` : ''}
                 </div>
             </td>
-            <td>
+            <td data-label="Teléfono">
                 <div class="phone-raw">${lead.phone_original}</div>
                 <div style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">WSP: +${lead.phone_clean}</div>
             </td>
-            <td>
+            <td data-label="Calidad">
                 <div class="calidad-wrapper">
                     <div class="calidad-header-row">
                         <span class="calidad-num">${lead.calidad_score}%</span>
@@ -290,10 +290,10 @@ function renderLeads(nicho, ciudad, zona) {
                     </div>
                 </div>
             </td>
-            <td>
+            <td data-label="Ubicación">
                 <div class="address-text" title="${lead.address}">${lead.address}</div>
             </td>
-            <td>
+            <td data-label="Propuesta">
                 <div class="proposal-box">
                     <textarea class="proposal-textarea" id="textarea-${index}">${lead.message}</textarea>
                     <div class="proposal-actions">
@@ -301,12 +301,12 @@ function renderLeads(nicho, ciudad, zona) {
                     </div>
                 </div>
             </td>
-            <td style="text-align: center;">
+            <td data-label="Acción" style="text-align: center;">
                 <a href="${lead.whatsapp_link}" target="_blank" class="btn-send-whatsapp" id="whatsapp-btn-${index}" onclick="markAsContacted(${index})">
                     <i class="fa-brands fa-whatsapp"></i> Enviar
                 </a>
             </td>
-            <td>
+            <td data-label="Estado">
                 <select class="status-select" id="select-${index}" onchange="updateStatus(${index}, this.value)">
                     <option value="[Pendiente]" selected>Pendiente</option>
                     <option value="[Contactado]">Contactado</option>
