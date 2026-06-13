@@ -357,8 +357,8 @@
                 <div id="g_id_onload"
                      data-client_id="{{ google_client_id }}"
                      data-context="signin"
-                     data-ux_mode="popup"
-                     data-callback="handleCredentialResponse"
+                     data-ux_mode="redirect"
+                     data-login_uri="/api/auth/google/redirect"
                      data-auto_prompt="false">
                 </div>
                 <div class="g_id_signin"
@@ -396,6 +396,17 @@
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.get('redirected') === 'true') {
             document.getElementById("redirectAlert").style.display = "flex";
+        }
+
+        // Check if there is an error in the query parameters (from redirect flow)
+        const errorType = urlParams.get('error');
+        if (errorType) {
+            let errorMsg = "Error al iniciar sesión.";
+            if (errorType === "no_credential") errorMsg = "No se recibieron credenciales de Google.";
+            else if (errorType === "invalid_token") errorMsg = "El token de Google es inválido o expiró.";
+            else if (errorType === "no_email") errorMsg = "La cuenta de Google no tiene un correo asociado.";
+            else if (errorType === "server_error") errorMsg = "Error interno del servidor al procesar la cuenta.";
+            showLocalError(errorMsg);
         }
 
         // Show local error box

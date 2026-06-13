@@ -914,6 +914,39 @@ def auth_google():
     except Exception as e:
         return jsonify({"status": "error", "message": f"Error de autenticación: {str(e)}"}), 500
 
+@app.route("/api/auth/google/redirect", methods=["POST"])
+def auth_google_redirect():
+    token = request.form.get("credential")
+    if not token:
+        return redirect("/login?error=no_credential")
+        
+    try:
+        resp = requests.get(f"https://oauth2.googleapis.com/tokeninfo?id_token={token}", timeout=5)
+        if resp.status_code != 200:
+            return redirect("/login?error=invalid_token")
+            
+        payload = resp.json()
+        email = payload.get("email")
+        name = payload.get("name", email.split("@")[0].capitalize())
+        picture = payload.get("picture", "")
+        
+        if not email:
+            return redirect("/login?error=no_email")
+            
+        user_profile = get_user_profile(email, name, picture)
+        
+        session["user"] = {
+            "email": email,
+            "name": name,
+            "picture": picture
+        }
+        
+        return redirect("/")
+        
+    except Exception as e:
+        print(f"Redirect Auth Error: {e}")
+        return redirect("/login?error=server_error")
+
 @app.route("/api/auth/demo", methods=["POST"])
 def auth_demo():
     email = "demo.developer@clientmagnet.com"
