@@ -101,7 +101,7 @@ prospectForm.addEventListener("submit", async function(e) {
     const zona = document.getElementById("zona").value.trim();
     const servicio = serviceInput.value.trim();
     const cantidad = document.getElementById("cantidad").value;
-    const apiKey = document.getElementById("apiKey").value.trim();
+    const apiKey = "";
     const estiloMensaje = document.getElementById("estiloMensaje").value;
     
     // 1. Estado de autenticación
