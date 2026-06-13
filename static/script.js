@@ -6,6 +6,7 @@ let currentNicho = "", currentCiudad = "", currentZona = "";
 // DOM Elements
 const prospectForm = document.getElementById("prospectForm");
 const submitBtn = document.getElementById("submitBtn");
+const modifySearchBtn = document.getElementById("modifySearchBtn");
 const loadingOverlay = document.getElementById("loadingOverlay");
 const emptyState = document.getElementById("emptyState");
 const tableContainer = document.getElementById("tableContainer");
@@ -192,6 +193,7 @@ prospectForm.addEventListener("submit", async function(e) {
                 }
                 showToast(`Se cargaron ${localLeads.length} leads exitosamente.`, "success");
                 renderLeads(nicho, ciudad, zona);
+                lockSearchFields();
             }
         } else {
             if (result && result.code === "LIMIT_EXCEEDED") {
@@ -766,3 +768,44 @@ if (prospectFormElement) {
 
 // Inicializar Auth al cargar consultando la sesión del servidor
 checkSession();
+
+// Bloqueo y Desbloqueo de campos de búsqueda
+function lockSearchFields() {
+    const nichoInput = document.getElementById("nicho");
+    const ciudadInput = document.getElementById("ciudad");
+    const zonaInput = document.getElementById("zona");
+    const cantidadInput = document.getElementById("cantidad");
+    const estiloMensajeSelect = document.getElementById("estiloMensaje");
+    
+    if (nichoInput) nichoInput.disabled = true;
+    if (ciudadInput) ciudadInput.disabled = true;
+    if (zonaInput) zonaInput.disabled = true;
+    if (serviceInput) serviceInput.disabled = true;
+    if (cantidadInput) cantidadInput.disabled = true;
+    if (estiloMensajeSelect) estiloMensajeSelect.disabled = true;
+    
+    if (submitBtn) submitBtn.style.display = "none";
+    if (modifySearchBtn) modifySearchBtn.style.display = "inline-flex";
+}
+
+function unlockSearchFields() {
+    const nichoInput = document.getElementById("nicho");
+    const ciudadInput = document.getElementById("ciudad");
+    const zonaInput = document.getElementById("zona");
+    const cantidadInput = document.getElementById("cantidad");
+    const estiloMensajeSelect = document.getElementById("estiloMensaje");
+    
+    if (nichoInput) nichoInput.disabled = false;
+    if (ciudadInput) ciudadInput.disabled = false;
+    if (zonaInput) zonaInput.disabled = false;
+    if (serviceInput) serviceInput.disabled = false;
+    if (cantidadInput) cantidadInput.disabled = false;
+    if (estiloMensajeSelect) estiloMensajeSelect.disabled = false;
+    
+    if (submitBtn) submitBtn.style.display = "inline-flex";
+    if (modifySearchBtn) modifySearchBtn.style.display = "none";
+}
+
+if (modifySearchBtn) {
+    modifySearchBtn.addEventListener("click", unlockSearchFields);
+}
