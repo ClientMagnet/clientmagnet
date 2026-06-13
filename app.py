@@ -401,8 +401,26 @@ def calculate_service_score(servicio, website, rating=None, instagram=None, face
     serv_lower = servicio.lower().strip()
     web_clean = website.lower() if website else ""
     
-    # 1. Desarrollo Web
-    if any(x in serv_lower for x in ["web", "pagina", "página", "sitio", "desarrollo"]):
+    # Determinar categoría de servicio de manera precisa y coherente con las propuestas
+    if any(x in serv_lower for x in ["web", "pagina", "página", "sitio", "desarrollo", "programador", "programacion", "programación", "software", "app"]):
+        serv_cat = "web"
+    elif any(x in serv_lower for x in ["community", "redes", "social", "instagram", "facebook", "post", "contenido", "feed", "stories"]):
+        serv_cat = "community"
+    elif any(x in serv_lower for x in ["empleado", "empleada", "trabajar", "puesto", "recep", "asistente", "secretari", "administra", "soporte", "atencion", "atención"]):
+        serv_cat = "empleado"
+    elif any(x in serv_lower for x in ["ventas", "vendedor", "vendedora", "comercial", "setter", "closer", "telemarketer"]):
+        serv_cat = "ventas"
+    elif any(x in serv_lower for x in ["diseño", "diseno", "grafico", "gráfico", "branding", "identidad", "logo"]):
+        serv_cat = "diseno"
+    elif any(x in serv_lower for x in ["fotografia", "fotografía", "video", "edicion", "edición", "filmmaker", "camara", "cámara", "audiovisual"]):
+        serv_cat = "audiovisual"
+    elif any(x in serv_lower for x in ["marketing", "publicidad", "ads", "anuncios", "seo", "trafico", "tráfico"]):
+        serv_cat = "marketing"
+    else:
+        serv_cat = "generic"
+
+    # 1. Desarrollo Web: Se basa ÚNICAMENTE en las métricas y existencia de su página web propia
+    if serv_cat == "web":
         if not website:
             score = 15
             motivo = "Sin Web"
@@ -444,8 +462,8 @@ def calculate_service_score(servicio, website, rating=None, instagram=None, face
                     
         return score, motivo
 
-    # 2. Community Manager / Redes
-    elif any(x in serv_lower for x in ["community", "redes", "social", "instagram", "post", "diseño"]):
+    # 2. Redes Sociales / Community / Diseño / Contenido Visual: Se basa ÚNICAMENTE en su presencia en Redes Sociales (Instagram/Facebook)
+    elif serv_cat in ["community", "diseno", "audiovisual"]:
         inst = instagram
         face = facebook
         if not inst and "instagram.com" in web_clean:
@@ -459,20 +477,39 @@ def calculate_service_score(servicio, website, rating=None, instagram=None, face
             score += 60
             reasons.append("Instagram")
         if face:
-            score += 30
+            score += 40
             reasons.append("Facebook")
-        if website and not any(x in web_clean for x in ["instagram.com", "facebook.com"]):
-            score += 10
             
         if score == 0:
             score = 15
             motivo = "Sin Redes"
         else:
+            score = min(100, score)
             motivo = " + ".join(reasons) + " Detectado"
             
         return score, motivo
 
-    # 3. Empleado / Asistente / Ventas / Otros
+    # 3. Marketing / Publicidad / Ads / SEO: Se basa en la presencia combinada de Web y Redes (necesarias para campañas)
+    elif serv_cat == "marketing":
+        has_web = website and not any(x in web_clean for x in ["instagram.com", "facebook.com", "wa.link", "whatsapp.com", "linktr.ee"])
+        has_social = instagram or facebook or any(x in web_clean for x in ["instagram.com", "facebook.com"])
+        
+        if has_web and has_social:
+            score = 85
+            motivo = "Presencia Web + Redes"
+        elif has_web:
+            score = 55
+            motivo = "Tiene Web (Sin Redes)"
+        elif has_social:
+            score = 45
+            motivo = "Tiene Redes (Sin Web)"
+        else:
+            score = 15
+            motivo = "Sin Canales Digitales"
+            
+        return score, motivo
+
+    # 4. Empleado / Ventas / Administrativos / Otros: Se basa ÚNICAMENTE en la reputación y reviews de Google Maps
     else:
         if rating:
             score = int(float(rating) * 20)
@@ -484,8 +521,8 @@ def calculate_service_score(servicio, website, rating=None, instagram=None, face
             else:
                 motivo = f"Reputación Excelente ({rating}★)"
         else:
-            score = 65
-            motivo = "Reputación Promedio"
+            score = 50
+            motivo = "Sin Calificación (Reputación Promedio)"
         return score, motivo
 
 def generate_local_proposal(name, nicho, servicio, estilo_mensaje="argentino", ciudad=None, website=None, calidad_motivo=None, instagram=None, facebook=None, sender_name="Francisco"):
