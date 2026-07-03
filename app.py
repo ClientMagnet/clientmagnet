@@ -734,14 +734,14 @@ def generate_local_proposal(name, nicho, servicio, estilo_mensaje="argentino", c
                     f"Hola, ¿cómo estás? Vi tu negocio *{name}* analizando las opciones del rubro en {zona_text}.\n\n"
                     f"Noté que se manejan de forma muy activa con el Instagram, pero que todavía no cuentan con una página web propia. Hoy en día, depender solo de redes expone al negocio a que un cambio de algoritmo te baje las visitas, además de que se pierdan muchos clientes que buscan directo en Google y quieren ver un catálogo ordenado.\n\n"
                     f"Me dedico a diseñar páginas web pensadas exclusivamente para el rubro de {nicho}, enfocadas en que sea súper fácil e intuitivo para la gente de tu zona ver tus productos y hacer pedidos.\n\n"
-                    f"Si te interesa conocer una propuesta visual o ver algunos ejemplos de lo que hago, avisame y lo conversamos sin compromiso. ¡Saludos!"
+                    f"Armé un boceto visual rápido de cómo podría quedar la página web de tu negocio. Si te interesa ver una captura de pantalla del boceto para ver qué te parece, avisame y te la comparto sin ningún compromiso. ¡Saludos!"
                 )
             else:
                 return (
                     f"Hola, ¿cómo estás? Vi tu negocio *{name}* analizando las opciones del rubro en {zona_text}.\n\n"
                     f"Noté que actualmente no tienen una presencia fuerte en internet ni cuentan con una página web propia. En este rubro, no figurar de forma clara digitalmente hace que se pierdan muchos clientes de la zona que buscan directo en Google y terminan yendo a la competencia que sí tiene un catálogo visible.\n\n"
                     f"Me dedico a diseñar páginas web pensadas exclusivamente para el rubro de {nicho}, enfocadas en que sea súper fácil e intuitivo para la gente de tu zona ver tus productos y hacer pedidos.\n\n"
-                    f"Si te interesa conocer una propuesta visual o ver algunos ejemplos de lo que hago, avisame y lo conversamos sin compromiso. ¡Saludos!"
+                    f"Armé un boceto visual rápido de cómo podría quedar la página web de tu negocio. Si te interesa ver una captura de pantalla del boceto para ver qué te parece, avisame y te la comparto sin ningún compromiso. ¡Saludos!"
                 )
         elif calidad_motivo and "indexar" in calidad_motivo.lower():
             return (
@@ -1044,7 +1044,7 @@ def generate_with_gemini(api_key, name, nicho, ciudad, estado_digital, servicio,
         Noté que actualmente no tienen una presencia fuerte en internet ni cuentan con una página web propia. En este rubro, no figurar de forma clara digitalmente hace que se pierdan muchos clientes de la zona que buscan directo en Google y terminan yendo a la competencia que sí tiene un catálogo visible.
 
         Me dedico a diseñar páginas web pensadas exclusivamente para el rubro de {nicho}, enfocadas en que sea súper fácil e intuitivo para la gente de tu zona ver tus productos y hacer pedidos.
-        Si te interesa conocer una propuesta visual o ver algunos ejemplos de lo que hago, avisame y lo conversamos sin compromiso. ¡Saludos!
+        Armé un boceto visual rápido de cómo podría quedar la página web de tu negocio. Si te interesa ver una captura de pantalla del boceto para ver qué te parece, avisame y te la comparto sin ningún compromiso. ¡Saludos!
 
         ---
         ### ESCENARIO B: El scraper decía "Sin Web" pero tu búsqueda ENCONTRÓ un sitio web activo en Google
