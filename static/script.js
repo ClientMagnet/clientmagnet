@@ -2,6 +2,8 @@
 let localLeads = [];
 let originalLeads = [];
 let currentNicho = "", currentCiudad = "", currentZona = "";
+let contactedLeads = JSON.parse(localStorage.getItem("clientmagnet-contacted-leads")) || [];
+let currentTab = "prospects";
 
 // DOM Elements
 const prospectForm = document.getElementById("prospectForm");
@@ -169,7 +171,16 @@ prospectForm.addEventListener("submit", async function(e) {
         
         if (response.ok && result.status === "success") {
             localLeads = result.data;
-            originalLeads = [...result.data];
+            
+            // Sincronizar el estado de los prospectos devueltos con el historial de contactados
+            localLeads.forEach(lead => {
+                const contacted = contactedLeads.find(c => c.phone_clean === lead.phone_clean);
+                if (contacted) {
+                    lead.status = contacted.status;
+                }
+            });
+            
+            originalLeads = [...localLeads];
             
             // Mostrar/ocultar banner de advertencia según si la API key está disponible (servidor o UI)
             const warningBanner = document.getElementById("apiKeyWarningBanner");
@@ -232,6 +243,13 @@ function renderEmptyState() {
     statsPanel.style.display = "none";
     document.getElementById("filterBar").style.display = "none";
     searchBreadcrumb.textContent = "Inicia una búsqueda para extraer prospectos de Google Maps";
+    
+    // Mantener la barra de pestañas visible si hay historial de contactados
+    const tabsWrapper = document.getElementById("tabsWrapper");
+    if (tabsWrapper) {
+        tabsWrapper.style.display = contactedLeads.length > 0 ? "block" : "none";
+    }
+    updateTabCounts();
 }
 
 // Helper to determine color classes for quality score
@@ -243,6 +261,10 @@ function getCalidadClass(score) {
 
 // Render Leads Table
 function renderLeads(nicho, ciudad, zona) {
+    // Mostrar barra de pestañas si hay resultados o historial
+    const tabsWrapper = document.getElementById("tabsWrapper");
+    if (tabsWrapper) tabsWrapper.style.display = "block";
+
     emptyState.style.display = "none";
     tableContainer.style.display = "block";
     exportBtn.disabled = false;
@@ -254,141 +276,201 @@ function renderLeads(nicho, ciudad, zona) {
     if (filterBar) filterBar.style.display = "flex";
     
     const hidePremium = hidePremiumCheckbox ? hidePremiumCheckbox.checked : false;
+    
+    // Cambiar origen de datos según pestaña activa
+    let leadsToRender = [];
+    if (currentTab === "prospects") {
+        leadsToRender = localLeads.filter(lead => lead.status === "[Pendiente]");
+        searchBreadcrumb.innerHTML = `Resultados para: <strong>${nicho || currentNicho}</strong> en <strong>${zona || currentZona}, ${ciudad || currentCiudad}</strong>`;
+    } else {
+        leadsToRender = contactedLeads;
+        searchBreadcrumb.innerHTML = `Historial de <strong>Negocios Contactados</strong> (${contactedLeads.length})`;
+    }
+    
+    // Ordenar los leads a renderizar
+    const sortVal = document.getElementById("sortLeads").value;
+    if (sortVal === "score-desc") {
+        leadsToRender.sort((a, b) => b.calidad_score - a.calidad_score);
+    } else if (sortVal === "score-asc") {
+        leadsToRender.sort((a, b) => a.calidad_score - b.calidad_score);
+    }
+    
     let visibleCount = 0;
-    
-    searchBreadcrumb.innerHTML = `Resultados para: <strong>${nicho}</strong> en <strong>${zona}, ${ciudad}</strong>`;
-    
     leadsTableBody.innerHTML = "";
     
-    localLeads.forEach((lead, index) => {
-        const tr = document.createElement("tr");
-        tr.id = `row-${index}`;
-        
-        // Mantener la clase de estado correcta
-        const statusClass = lead.status === "[Pendiente]" ? "status-pendiente" :
-                            lead.status === "[Contactado]" ? "status-contactado" :
-                            lead.status === "[Sin Respuesta]" ? "status-sin-respuesta" :
-                            lead.status === "[Interesado]" ? "status-interesado" :
-                            lead.status === "[Rechazado]" ? "status-rechazado" : "status-pendiente";
-        tr.className = statusClass;
-        
-        const calidadClass = getCalidadClass(lead.calidad_score);
-        
-        // Aplicar filtro de premium si está activo
-        const shouldHide = hidePremium && (lead.calidad_score > 70);
-        if (shouldHide) {
-            tr.style.display = "none";
+    if (leadsToRender.length === 0) {
+        // Estado vacío dentro de la tabla
+        if (currentTab === "prospects") {
+            leadsTableBody.innerHTML = `
+                <tr>
+                    <td colspan="7" style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                        <i class="fa-solid fa-face-smile" style="font-size: 24px; margin-bottom: 10px; display: block; color: var(--primary);"></i>
+                        ¡Buen trabajo! No quedan prospectos pendientes en esta búsqueda.
+                    </td>
+                </tr>
+            `;
         } else {
-            tr.style.display = "";
-            visibleCount++;
+            leadsTableBody.innerHTML = `
+                <tr>
+                    <td colspan="7" style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                        <i class="fa-solid fa-paper-plane" style="font-size: 24px; margin-bottom: 10px; display: block; color: var(--warning);"></i>
+                        Aún no tienes prospectos contactados. Envía propuestas usando WhatsApp para agregarlos a esta lista.
+                    </td>
+                </tr>
+            `;
         }
-        
-        tr.innerHTML = `
-            <td data-label="Negocio">
-                <div class="business-name">${lead.name}</div>
-                <div class="business-links-container" style="display: flex; flex-direction: column; gap: 4px; margin-top: 6px;">
-                    ${lead.website ? (
-                        (lead.website.includes("instagram.com") || lead.website.includes("facebook.com") || lead.website.includes("wa.link") || lead.website.includes("whatsapp.com") || lead.website.includes("linktr.ee"))
-                        ? `
-                            <a href="${lead.website}" target="_blank" class="business-link" style="color: var(--warning); display: inline-flex; align-items: center; gap: 4px;">
-                                <i class="fa-solid fa-triangle-exclamation"></i> Solo Redes (Sin Web)
+    } else {
+        leadsToRender.forEach((lead, index) => {
+            const tr = document.createElement("tr");
+            tr.id = `row-${index}`;
+            
+            // Mantener la clase de estado correcta
+            const statusClass = lead.status === "[Pendiente]" ? "status-pendiente" :
+                                lead.status === "[Contactado]" ? "status-contactado" :
+                                lead.status === "[Sin Respuesta]" ? "status-sin-respuesta" :
+                                lead.status === "[Interesado]" ? "status-interesado" :
+                                lead.status === "[Rechazado]" ? "status-rechazado" : "status-pendiente";
+            tr.className = statusClass;
+            
+            // Clase de píldora de color del desplegable
+            const statusValClass = lead.status === "[Pendiente]" ? "status-val-pendiente" :
+                                   lead.status === "[Contactado]" ? "status-val-contactado" :
+                                   lead.status === "[Sin Respuesta]" ? "status-val-sin-respuesta" :
+                                   lead.status === "[Interesado]" ? "status-val-interesado" :
+                                   lead.status === "[Rechazado]" ? "status-val-rechazado" : "status-val-pendiente";
+            
+            const calidadClass = getCalidadClass(lead.calidad_score);
+            
+            // Aplicar filtro de premium si está activo (solo en pestaña de nuevos)
+            const shouldHide = (currentTab === "prospects") && hidePremium && (lead.calidad_score > 70);
+            if (shouldHide) {
+                tr.style.display = "none";
+            } else {
+                tr.style.display = "";
+                visibleCount++;
+            }
+            
+            tr.innerHTML = `
+                <td data-label="Negocio">
+                    <div class="business-name">${lead.name}</div>
+                    <div class="business-links-container" style="display: flex; flex-direction: column; gap: 4px; margin-top: 6px;">
+                        ${lead.website ? (
+                            (lead.website.includes("instagram.com") || lead.website.includes("facebook.com") || lead.website.includes("wa.link") || lead.website.includes("whatsapp.com") || lead.website.includes("linktr.ee"))
+                            ? `
+                                <a href="${lead.website}" target="_blank" class="business-link" style="color: var(--warning); display: inline-flex; align-items: center; gap: 4px;">
+                                    <i class="fa-solid fa-triangle-exclamation"></i> Solo Redes (Sin Web)
+                                </a>
+                              `
+                            : `
+                                <a href="${lead.website}" target="_blank" class="business-link" style="display: inline-flex; align-items: center; gap: 4px;">
+                                    <i class="fa-solid fa-globe"></i> Ver Sitio Web
+                                </a>
+                              `
+                        ) : `
+                            <div style="font-size: 11px; color: var(--text-secondary); display: inline-flex; align-items: center; gap: 4px;">
+                                <i class="fa-solid fa-link-slash"></i> Sin Sitio Web
+                            </div>
+                        `}
+                        ${lead.instagram ? `
+                            <a href="${lead.instagram}" target="_blank" class="business-link instagram-link" style="color: #e1306c; display: inline-flex; align-items: center; gap: 4px; font-weight: 500;">
+                                <i class="fa-brands fa-instagram"></i> Ver Instagram
                             </a>
-                          `
-                        : `
-                            <a href="${lead.website}" target="_blank" class="business-link" style="display: inline-flex; align-items: center; gap: 4px;">
-                                <i class="fa-solid fa-globe"></i> Ver Sitio Web
+                        ` : ''}
+                        ${(!lead.instagram && lead.facebook) ? `
+                            <a href="${lead.facebook}" target="_blank" class="business-link facebook-link" style="color: #1877f2; display: inline-flex; align-items: center; gap: 4px; font-weight: 500;">
+                                <i class="fa-brands fa-facebook-f"></i> Ver Facebook
                             </a>
-                          `
-                    ) : `
-                        <div style="font-size: 11px; color: var(--text-secondary); display: inline-flex; align-items: center; gap: 4px;">
-                            <i class="fa-solid fa-link-slash"></i> Sin Sitio Web
+                        ` : ''}
+                    </div>
+                </td>
+                <td data-label="Teléfono">
+                    <div class="phone-raw">${lead.phone_original}</div>
+                    <div style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">WSP: +${lead.phone_clean}</div>
+                </td>
+                <td data-label="Calidad">
+                    <div class="calidad-wrapper">
+                        <div class="calidad-header-row">
+                            <span class="calidad-num">${lead.calidad_score}%</span>
+                            <span class="calidad-badge ${calidadClass}">${lead.calidad_motivo}</span>
                         </div>
-                    `}
-                    ${lead.instagram ? `
-                        <a href="${lead.instagram}" target="_blank" class="business-link instagram-link" style="color: #e1306c; display: inline-flex; align-items: center; gap: 4px; font-weight: 500;">
-                            <i class="fa-brands fa-instagram"></i> Ver Instagram
-                        </a>
-                    ` : ''}
-                    ${(!lead.instagram && lead.facebook) ? `
-                        <a href="${lead.facebook}" target="_blank" class="business-link facebook-link" style="color: #1877f2; display: inline-flex; align-items: center; gap: 4px; font-weight: 500;">
-                            <i class="fa-brands fa-facebook-f"></i> Ver Facebook
-                        </a>
-                    ` : ''}
-                </div>
-            </td>
-            <td data-label="Teléfono">
-                <div class="phone-raw">${lead.phone_original}</div>
-                <div style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">WSP: +${lead.phone_clean}</div>
-            </td>
-            <td data-label="Calidad">
-                <div class="calidad-wrapper">
-                    <div class="calidad-header-row">
-                        <span class="calidad-num">${lead.calidad_score}%</span>
-                        <span class="calidad-badge ${calidadClass}">${lead.calidad_motivo}</span>
+                        <div class="calidad-bar-container">
+                            <div class="calidad-bar ${calidadClass}" id="bar-${index}" style="width: 0%;"></div>
+                        </div>
                     </div>
-                    <div class="calidad-bar-container">
-                        <div class="calidad-bar ${calidadClass}" id="bar-${index}" style="width: 0%;"></div>
+                </td>
+                <td data-label="Ubicación">
+                    <div class="address-text" title="${lead.address}">${lead.address}</div>
+                </td>
+                <td data-label="Propuesta">
+                    <div class="proposal-box">
+                        <textarea class="proposal-textarea" id="textarea-${index}">${lead.message}</textarea>
+                        <div class="proposal-actions">
+                            <button class="btn-mini" onclick="copyProposal(${index})" title="Copiar al portapapeles"><i class="fa-solid fa-copy"></i></button>
+                        </div>
                     </div>
-                </div>
-            </td>
-            <td data-label="Ubicación">
-                <div class="address-text" title="${lead.address}">${lead.address}</div>
-            </td>
-            <td data-label="Propuesta">
-                <div class="proposal-box">
-                    <textarea class="proposal-textarea" id="textarea-${index}">${lead.message}</textarea>
-                    <div class="proposal-actions">
-                        <button class="btn-mini" onclick="copyProposal(${index})" title="Copiar al portapapeles"><i class="fa-solid fa-copy"></i></button>
-                    </div>
-                </div>
-            </td>
-            <td data-label="Acción" style="text-align: center;">
-                <a href="${lead.whatsapp_link}" target="_blank" class="btn-send-whatsapp" id="whatsapp-btn-${index}" onclick="markAsContacted(${index})">
-                    <i class="fa-brands fa-whatsapp"></i> Enviar
-                </a>
-            </td>
-            <td data-label="Estado">
-                <select class="status-select" id="select-${index}" onchange="updateStatus(${index}, this.value)">
-                    <option value="[Pendiente]" ${lead.status === "[Pendiente]" ? "selected" : ""}>Pendiente</option>
-                    <option value="[Contactado]" ${lead.status === "[Contactado]" ? "selected" : ""}>Contactado</option>
-                    <option value="[Sin Respuesta]" ${lead.status === "[Sin Respuesta]" ? "selected" : ""}>Sin Respuesta</option>
-                    <option value="[Interesado]" ${lead.status === "[Interesado]" ? "selected" : ""}>Interesado</option>
-                    <option value="[Rechazado]" ${lead.status === "[Rechazado]" ? "selected" : ""}>Rechazado</option>
-                </select>
-            </td>
-        `;
-        
-        leadsTableBody.appendChild(tr);
-        
-        // Trigger cool bar animation
-        setTimeout(() => {
-            const bar = document.getElementById(`bar-${index}`);
-            if (bar) bar.style.width = `${lead.calidad_score}%`;
-        }, 150);
-        
-        // Add live edit listener to textarea to dynamically update the WhatsApp link and local state
-        const textarea = tr.querySelector(`#textarea-${index}`);
-        textarea.addEventListener("input", function() {
-            const newText = this.value;
-            localLeads[index].message = newText;
+                </td>
+                <td data-label="Acción" style="text-align: center;">
+                    <a href="${lead.whatsapp_link}" target="_blank" class="btn-send-whatsapp" id="whatsapp-btn-${index}" onclick="markAsContacted(${index})">
+                        <i class="fa-brands fa-whatsapp"></i> Enviar
+                    </a>
+                </td>
+                <td data-label="Estado">
+                    <select class="status-select ${statusValClass}" id="select-${index}" onchange="updateStatus(${index}, this.value)">
+                        <option value="[Pendiente]" ${lead.status === "[Pendiente]" ? "selected" : ""}>Pendiente</option>
+                        <option value="[Contactado]" ${lead.status === "[Contactado]" ? "selected" : ""}>Contactado</option>
+                        <option value="[Sin Respuesta]" ${lead.status === "[Sin Respuesta]" ? "selected" : ""}>Sin Respuesta</option>
+                        <option value="[Interesado]" ${lead.status === "[Interesado]" ? "selected" : ""}>Interesado</option>
+                        <option value="[Rechazado]" ${lead.status === "[Rechazado]" ? "selected" : ""}>Rechazado</option>
+                    </select>
+                </td>
+            `;
             
-            // Re-encode and update WhatsApp link href
-            const cleanPhone = localLeads[index].phone_clean;
-            const newLink = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(newText)}`;
-            localLeads[index].whatsapp_link = newLink;
+            leadsTableBody.appendChild(tr);
             
-            document.getElementById(`whatsapp-btn-${index}`).href = newLink;
+            // Animación de la barra de calidad
+            setTimeout(() => {
+                const bar = document.getElementById(`bar-${index}`);
+                if (bar) bar.style.width = `${lead.calidad_score}%`;
+            }, 150);
+            
+            // Escuchar cambios en la propuesta
+            const textarea = tr.querySelector(`#textarea-${index}`);
+            textarea.addEventListener("input", function() {
+                const newText = this.value;
+                if (currentTab === "prospects") {
+                    localLeads[index].message = newText;
+                    const cleanPhone = localLeads[index].phone_clean;
+                    const newLink = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(newText)}`;
+                    localLeads[index].whatsapp_link = newLink;
+                    document.getElementById(`whatsapp-btn-${index}`).href = newLink;
+                } else {
+                    contactedLeads[index].message = newText;
+                    localStorage.setItem("clientmagnet-contacted-leads", JSON.stringify(contactedLeads));
+                    const cleanPhone = contactedLeads[index].phone_clean;
+                    const newLink = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(newText)}`;
+                    contactedLeads[index].whatsapp_link = newLink;
+                    document.getElementById(`whatsapp-btn-${index}`).href = newLink;
+                }
+            });
         });
-    });
+    }
+    
+    // Actualizar contadores numéricos de las pestañas
+    updateTabCounts();
     
     // Actualizar texto informativo de filtros
     const filterInfo = document.getElementById("filterInfo");
     if (filterInfo) {
-        if (hidePremium) {
-            const hiddenCount = localLeads.length - visibleCount;
-            filterInfo.textContent = `Omitidos ${hiddenCount} prospectos premium. Mostrando ${visibleCount} leads críticos/medios.`;
+        if (currentTab === "prospects") {
+            const pendingLeads = localLeads.filter(lead => lead.status === "[Pendiente]");
+            if (hidePremium) {
+                const hiddenCount = pendingLeads.length - visibleCount;
+                filterInfo.textContent = `Omitidos ${hiddenCount} prospectos premium. Mostrando ${visibleCount} leads críticos/medios.`;
+            } else {
+                filterInfo.textContent = `Mostrando todos los ${pendingLeads.length} leads pendientes.`;
+            }
         } else {
-            filterInfo.textContent = `Mostrando todos los ${localLeads.length} leads.`;
+            filterInfo.textContent = `Mostrando todos los ${contactedLeads.length} negocios contactados.`;
         }
     }
     
@@ -413,40 +495,113 @@ window.copyProposal = function(index) {
 
 // Mark as Contacted on Whatsapp link click
 window.markAsContacted = function(index) {
-    const select = document.getElementById(`select-${index}`);
-    if (select.value === "[Pendiente]") {
-        select.value = "[Contactado]";
-        updateStatus(index, "[Contactado]");
+    if (currentTab === "prospects") {
+        const lead = localLeads[index];
+        if (lead.status === "[Pendiente]") {
+            lead.status = "[Contactado]";
+            
+            // Guardar en la colección de contactados
+            const existsIdx = contactedLeads.findIndex(c => c.phone_clean === lead.phone_clean);
+            if (existsIdx === -1) {
+                contactedLeads.push({...lead});
+            } else {
+                contactedLeads[existsIdx].status = "[Contactado]";
+            }
+            localStorage.setItem("clientmagnet-contacted-leads", JSON.stringify(contactedLeads));
+            
+            // Animación suave de salida lateral al cambiar de sección
+            const row = document.getElementById(`row-${index}`);
+            if (row) {
+                row.style.transition = "all 0.4s ease";
+                row.style.opacity = "0";
+                row.style.transform = "translateX(50px)";
+                setTimeout(() => {
+                    renderLeads(currentNicho, currentCiudad, currentZona);
+                }, 400);
+            }
+        }
     }
 };
 
 // Update Row Status
 window.updateStatus = function(index, value) {
-    localLeads[index].status = value;
+    if (currentTab === "prospects") {
+        const lead = localLeads[index];
+        lead.status = value;
+        
+        // Si el estado pasa de pendiente a otro, mover a contactados
+        if (value !== "[Pendiente]") {
+            const existsIdx = contactedLeads.findIndex(c => c.phone_clean === lead.phone_clean);
+            if (existsIdx === -1) {
+                contactedLeads.push({...lead});
+            } else {
+                contactedLeads[existsIdx].status = value;
+            }
+            localStorage.setItem("clientmagnet-contacted-leads", JSON.stringify(contactedLeads));
+            
+            const row = document.getElementById(`row-${index}`);
+            if (row) {
+                row.style.transition = "all 0.4s ease";
+                row.style.opacity = "0";
+                row.style.transform = "translateX(50px)";
+                setTimeout(() => {
+                    renderLeads(currentNicho, currentCiudad, currentZona);
+                }, 400);
+                return;
+            }
+        }
+    } else {
+        // En la pestaña de contactados
+        const lead = contactedLeads[index];
+        lead.status = value;
+        
+        if (value === "[Pendiente]") {
+            // Regresar a pendientes si se encuentra en localLeads
+            const localIdx = localLeads.findIndex(c => c.phone_clean === lead.phone_clean);
+            if (localIdx !== -1) {
+                localLeads[localIdx].status = "[Pendiente]";
+            }
+            // Eliminar de contactados
+            contactedLeads.splice(index, 1);
+            localStorage.setItem("clientmagnet-contacted-leads", JSON.stringify(contactedLeads));
+            
+            const row = document.getElementById(`row-${index}`);
+            if (row) {
+                row.style.transition = "all 0.4s ease";
+                row.style.opacity = "0";
+                row.style.transform = "translateX(-50px)";
+                setTimeout(() => {
+                    renderLeads(currentNicho, currentCiudad, currentZona);
+                }, 400);
+                return;
+            }
+        } else {
+            // Actualizar localLeads si existe allí
+            const localIdx = localLeads.findIndex(c => c.phone_clean === lead.phone_clean);
+            if (localIdx !== -1) {
+                localLeads[localIdx].status = value;
+            }
+            localStorage.setItem("clientmagnet-contacted-leads", JSON.stringify(contactedLeads));
+        }
+    }
     
-    const tr = document.getElementById(`row-${index}`);
-    tr.className = ""; // clear all
-    
-    if (value === "[Pendiente]") tr.classList.add("status-pendiente");
-    else if (value === "[Contactado]") tr.classList.add("status-contactado");
-    else if (value === "[Sin Respuesta]") tr.classList.add("status-sin-respuesta");
-    else if (value === "[Interesado]") tr.classList.add("status-interesado");
-    else if (value === "[Rechazado]") tr.classList.add("status-rechazado");
-    
-    updateMetrics();
+    renderLeads(currentNicho, currentCiudad, currentZona);
 };
 
 // Recalculate Metrics based on visible filtered leads
 function updateMetrics() {
     const hidePremium = document.getElementById("hidePremiumLeads").checked;
+    
+    // Contar prospectos pendientes
+    const pendingLeads = localLeads.filter(lead => lead.status === "[Pendiente]");
     const filteredLeads = hidePremium 
-        ? localLeads.filter(lead => lead.calidad_score <= 70) 
-        : localLeads;
+        ? pendingLeads.filter(lead => lead.calidad_score <= 70) 
+        : pendingLeads;
 
     statLeads.textContent = filteredLeads.length;
     
-    const contactedCount = filteredLeads.filter(lead => lead.status !== "[Pendiente]").length;
-    statContactados.textContent = contactedCount;
+    // Contactados totales del historial
+    statContactados.textContent = contactedLeads.length;
 }
 
 // Export to Excel
@@ -843,4 +998,49 @@ function unlockSearchFields() {
 
 if (modifySearchBtn) {
     modifySearchBtn.addEventListener("click", unlockSearchFields);
+}
+
+// Tab navigation event listeners and initial display
+const tabProspects = document.getElementById("tabProspects");
+const tabContacted = document.getElementById("tabContacted");
+
+if (tabProspects && tabContacted) {
+    tabProspects.addEventListener("click", () => {
+        currentTab = "prospects";
+        tabProspects.classList.add("active");
+        tabContacted.classList.remove("active");
+        if (localLeads.length === 0) {
+            renderEmptyState();
+        } else {
+            renderLeads(currentNicho, currentCiudad, currentZona);
+        }
+    });
+    
+    tabContacted.addEventListener("click", () => {
+        currentTab = "contacted";
+        tabContacted.classList.add("active");
+        tabProspects.classList.remove("active");
+        emptyState.style.display = "none";
+        renderLeads(currentNicho, currentCiudad, currentZona);
+    });
+}
+
+function updateTabCounts() {
+    const prospectsCountEl = document.getElementById("prospectsCount");
+    const contactedCountEl = document.getElementById("contactedCount");
+    
+    if (prospectsCountEl) {
+        const pendingCount = localLeads.filter(lead => lead.status === "[Pendiente]").length;
+        prospectsCountEl.textContent = pendingCount;
+    }
+    if (contactedCountEl) {
+        contactedCountEl.textContent = contactedLeads.length;
+    }
+}
+
+// Show tabs wrapper on startup if there is contacted history
+if (contactedLeads.length > 0) {
+    const tabsWrapper = document.getElementById("tabsWrapper");
+    if (tabsWrapper) tabsWrapper.style.display = "block";
+    updateTabCounts();
 }
