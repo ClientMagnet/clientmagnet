@@ -1467,6 +1467,13 @@ def gemini_discover_businesses(api_key, nicho, ciudad, zona, cantidad=20):
         print(f"Error en gemini_discover_businesses: {e}")
     return []
 
+@app.route("/api/debug-logs")
+def debug_logs():
+    if os.path.exists("server_errors.log"):
+        with open("server_errors.log", "r", encoding="utf-8") as f:
+            return f.read(), 200, {"Content-Type": "text/plain; charset=utf-8"}
+    return "No logs found.", 200
+
 @app.route("/api/search", methods=["POST"])
 def search_businesses():
     # 0. Validar sesión real del usuario en el backend
