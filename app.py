@@ -298,17 +298,39 @@ def get_best_links(urls, business_name, maps_website=None):
         "other_social": other_social_url
     }
 
-def fallback_search_socials(business_name, city, platform="instagram", zona=None):
-    # Limpiar caracteres especiales y separadores típicos para evitar ruidos en la búsqueda
-    name_clean = business_name
-    for sep in ["-", "|", ":"]:
-        if sep in name_clean:
-            name_clean = name_clean.split(sep)[0]
+def extract_brand_name(name):
+    n = name.lower()
+    for sep in ["-", "|", ":", "•", "–"]:
+        if sep in n:
+            n = n.split(sep)[0]
             
-    clean_name = re.sub(r'[^\w\s]', '', name_clean)
-    clean_name = " ".join(clean_name.split())
+    n = re.sub(r'[áàäâ]', 'a', n)
+    n = re.sub(r'[éèëê]', 'e', n)
+    n = re.sub(r'[íìïî]', 'i', n)
+    n = re.sub(r'[óòöô]', 'o', n)
+    n = re.sub(r'[úùüû]', 'u', n)
     
-    # Construir consulta con zona y ciudad para mayor precisión
+    n = re.sub(r'[^\w\s]', '', n)
+    
+    words = n.split()
+    generic_words = {
+        "dietetica", "almacen", "natural", "saludable", "organico", "fiambreria", 
+        "carniceraria", "carniceria", "verduleria", "rotiseria", "pizzeria", "bar", 
+        "cafe", "restaurante", "estetica", "odontologia", "dental", "gym", "gimnasio", 
+        "fit", "fitness", "centro", "spa", "beauty", "peluqueria", "salon", "doctor", 
+        "clinica", "consultorio", "boutique", "zapaterio", "tienda", "local", "market", 
+        "almacén", "dietética", "orgánico", "peluquería", "salón", "clínica", "boutique",
+        "zapatería"
+    }
+    
+    brand_words = [w for w in words if w not in generic_words]
+    if brand_words:
+        return " ".join(brand_words).strip()
+    return name.strip()
+
+def fallback_search_socials(business_name, city, platform="instagram", zona=None):
+    clean_name = extract_brand_name(business_name)
+    
     location_parts = []
     if zona and zona.lower() not in city.lower():
         location_parts.append(zona)
@@ -317,12 +339,29 @@ def fallback_search_socials(business_name, city, platform="instagram", zona=None
     
     query = f"{clean_name} {location_str} {platform}"
     
-    # Intentar con DuckDuckGo primero
+    # 1. Intentar primero con Brave Search
+    brave_url = f"https://search.brave.com/search?q={urllib.parse.quote(query)}"
+    try:
+        resp = requests.get(brave_url, headers=HEADERS, timeout=6)
+        if resp.status_code == 200:
+            pattern = r'https?://(?:www\.)?' + (r'instagram\.com' if platform == "instagram" else r'facebook\.com') + r'/[a-zA-Z0-9_\.\-]+'
+            links = re.findall(pattern, resp.text, re.IGNORECASE)
+            filtered = []
+            for l in links:
+                l_lower = l.lower()
+                if not any(x in l_lower for x in ["/p/", "/reel/", "/stories/", "/accounts/", "/explore/", "/developer", "/privacy", "/terms"]):
+                    clean_link = re.sub(r'[.,;:\'"\)\\]+$', '', l)
+                    filtered.append(clean_link)
+            if filtered:
+                return list(set(filtered))[0]
+    except Exception as e:
+        print(f"Error en fallback_search_socials (Brave): {e}")
+        
+    # 2. Respaldo secundario: DuckDuckGo
     ddg_url = f"https://html.duckduckgo.com/html/?q={urllib.parse.quote(query)}"
     try:
         resp = requests.get(ddg_url, headers=HEADERS, timeout=5)
         if resp.status_code == 200:
-            # Descodificar URL-encoded en el HTML para evitar redirecciones codificadas en href (uddg=https%3A%2F%2F...)
             html = urllib.parse.unquote(resp.text)
             pattern = r'https?://(?:www\.)?' + (r'instagram\.com' if platform == "instagram" else r'facebook\.com') + r'/[a-zA-Z0-9_\.\-]+'
             links = re.findall(pattern, html, re.IGNORECASE)
@@ -337,7 +376,7 @@ def fallback_search_socials(business_name, city, platform="instagram", zona=None
     except Exception:
         pass
         
-    # Intentar con Bing como respaldo
+    # 3. Respaldo terciario: Bing
     bing_url = f"https://www.bing.com/search?q={urllib.parse.quote(query)}"
     try:
         resp = requests.get(bing_url, headers=HEADERS, timeout=5)
@@ -359,14 +398,7 @@ def fallback_search_socials(business_name, city, platform="instagram", zona=None
     return None
 
 def fallback_search_website(business_name, city, zona=None):
-    # Limpiar nombre
-    name_clean = business_name
-    for sep in ["-", "|", ":"]:
-        if sep in name_clean:
-            name_clean = name_clean.split(sep)[0]
-            
-    clean_name = re.sub(r'[^\w\s]', '', name_clean)
-    clean_name = " ".join(clean_name.split())
+    clean_name = extract_brand_name(business_name)
     
     location_parts = []
     if zona and zona.lower() not in city.lower():
@@ -376,19 +408,39 @@ def fallback_search_website(business_name, city, zona=None):
     
     query = f"{clean_name} {location_str} sitio oficial"
     
+    # 1. Intentar primero con Brave Search
+    brave_url = f"https://search.brave.com/search?q={urllib.parse.quote(query)}"
+    try:
+        resp = requests.get(brave_url, headers=HEADERS, timeout=6)
+        if resp.status_code == 200:
+            hrefs = re.findall(r'href="([^"]+)"', resp.text)
+            for link in hrefs:
+                if link.startswith("http"):
+                    link_lower = link.lower()
+                    if not any(x in link_lower for x in [
+                        "brave.com", "instagram.com", "facebook.com", "wa.link", "whatsapp.com", "linktr.ee",
+                        "youtube.com", "duckduckgo.com", "google.com", "bing.com", "yahoo.com", "yelp.com",
+                        "tripadvisor", "paginasamarillas", "mercadolibre", "pedidosya", "rappi", "wikipedia"
+                    ]):
+                        domain = urllib.parse.urlparse(link).netloc.lower()
+                        domain_clean = domain.replace("www.", "")
+                        words = [w for w in clean_name.lower().split() if len(w) > 3]
+                        if not words or any(w in domain_clean for w in words):
+                            return link
+    except Exception as e:
+        print(f"Error en fallback_search_website (Brave): {e}")
+        
+    # 2. Respaldo secundario: DuckDuckGo
     ddg_url = f"https://html.duckduckgo.com/html/?q={urllib.parse.quote(query)}"
     try:
         resp = requests.get(ddg_url, headers=HEADERS, timeout=5)
         if resp.status_code == 200:
             html = urllib.parse.unquote(resp.text)
-            
             href_pattern = r'href="([^"]+)"'
             links = re.findall(href_pattern, html)
-            
             for link in links:
                 if link.startswith("http"):
                     link_lower = link.lower()
-                    # Descartar si es buscador, red social o directorios de spam
                     if not any(x in link_lower for x in [
                         "instagram.com", "facebook.com", "wa.link", "whatsapp.com", "linktr.ee",
                         "youtube.com", "duckduckgo.com", "google.com", "bing.com", "yahoo.com",
@@ -398,15 +450,13 @@ def fallback_search_website(business_name, city, zona=None):
                     ]):
                         domain = urllib.parse.urlparse(link).netloc.lower()
                         domain_clean = domain.replace("www.", "")
-                        
-                        # Si contiene al menos una palabra clave significativa del nombre comercial
                         words = [w for w in clean_name.lower().split() if len(w) > 3]
                         if words and any(w in domain_clean for w in words):
                             return link
     except Exception as e:
         print(f"Error en fallback_search_website (DDG): {e}")
         
-    # Intentar con Bing como respaldo
+    # 3. Respaldo terciario: Bing
     bing_url = f"https://www.bing.com/search?q={urllib.parse.quote(query)}"
     try:
         resp = requests.get(bing_url, headers=HEADERS, timeout=5)
@@ -441,27 +491,29 @@ def gemini_search_socials_and_web(api_key, name, city, zona=None, phone=None, ad
     location_parts.append(city)
     location_str = " ".join(location_parts)
     
+    brand_name = extract_brand_name(name)
+    
     prompt = f"""
     Eres un investigador profesional de datos comerciales (OSINT). Tu objetivo es encontrar con total certeza los canales digitales oficiales del siguiente comercio local:
-    - Nombre del comercio: "{name}"
-    - Ubicación: "{location_str}", Argentina
-    - Dirección física: "{address or 'No disponible'}"
+    - Nombre completo del comercio: "{name}"
+    - Nombre de marca simplificado: "{brand_name}"
+    - Ubicación de búsqueda: "{location_str}", Argentina
+    - Dirección física registrada: "{address or 'No disponible'}"
     - Teléfono registrado: "{phone or 'No disponible'}"
     
-    ESTRATEGIA DE BÚSQUEDA OBLIGATORIA (Realiza varias consultas de forma secuencial en Google Search):
-    1. CONSULTA 1 (Búsqueda de Instagram): Busca `"{name} {city} instagram"`.
-    2. CONSULTA 2 (Búsqueda de Sitio Web): Busca `"{name} {city} sitio web"` o `"{name} {city} tienda online"`.
-    3. CONSULTA 3 (Búsqueda por Teléfono): Si hay teléfono, busca `"{phone} instagram"` o `"{phone} facebook"`.
-    4. CONSULTA 4 (Búsqueda por Dirección): Si hay dirección, busca `"{name} {address} instagram"`.
+    ESTRATEGIA DE BÚSQUEDA POR PASOS (Realiza varias consultas de forma secuencial usando tu herramienta Google Search):
+    1. Búsqueda de Instagram Directa (sitio): `site:instagram.com "{brand_name}" {city}`.
+    2. Búsqueda de Instagram Ampliada: `site:instagram.com {brand_name} {city}` o `site:instagram.com {name} {city}`.
+    3. Búsqueda de Facebook: `site:facebook.com {brand_name} {city}`.
+    4. Búsqueda de Sitio Web Oficial: `"{brand_name}" "{city}" sitio oficial` o `"{brand_name}" {city} tienda online`.
+    5. Búsqueda por Teléfono/Dirección (si están disponibles): `"{phone}" instagram` o `"{name}" "{address.split(',')[0] if address else ''}"`.
     
-    ADVERTENCIA CRÍTICA:
-    - NO unas todos los campos (nombre, dirección, teléfono, ubicación) en una sola consulta de búsqueda, ya que esto causará que Google devuelva cero resultados por ser demasiado específica. Realiza consultas separadas y progresivas en tu herramienta de búsqueda.
-    
-    REGLAS DE VALIDACIÓN DE IDENTIDAD:
-    - No asocies cuentas de Instagram de locales homónimos situados en otras ciudades o países (ej. si buscas en CABA, no relaciones una cuenta de Córdoba o de México).
-    - Verifica que el perfil de Instagram, Facebook o sitio web encontrado mencione la dirección física "{address or ''}", el teléfono "{phone or ''}", o al menos la zona "{zona or ''}" o ciudad "{city}".
-    - Si encuentras un agregador de enlaces (ej. Linktree, Linkbio, Instabio, Beacons, Flowcode), analízalo o busca qué enlaces contiene para extraer la cuenta de Instagram o Facebook real y el sitio web de ventas.
-    - Si encuentras un sitio de e-commerce propio (ej. Tiendanube, Mercado Shops, Empretienda) o un dominio propio activo (.com, .com.ar) que pertenezca inequívocamente al negocio, regístralo en "website". No consideres directorios de terceros (como Páginas Amarillas, Yelp, TripAdvisor) ni su propia ficha de Google Maps como sitio web.
+    REGLAS DE VALIDACIÓN FLEXIBLES (Fuzzy matching):
+    - IGNORE EL FORMATO EXACTO DEL USUARIO: Los comercios suelen usar arrobas similares como "zoja.market", "zoja.market.bsas", "zojamarket", "dietetica.artigas" o "dietetica_villa_pueyrredon" para sus nombres comerciales. Si el nombre de usuario coincide razonablemente con el nombre del comercio y está en la misma ciudad/rubro, es TOTALMENTE VÁLIDO.
+    - VALIDACIÓN POR CONTEXTO: Considera el perfil de Instagram o Facebook como VÁLIDO si pertenece al mismo rubro (ej: dietética, estética, etc.) y se ubica en la misma zona o ciudad, incluso si la dirección física exacta o el teléfono no figuran explícitamente escritos en la biografía.
+    - FILTRADO DE HOMÓNIMOS: Descarta únicamente perfiles que correspondan inequívocamente a locales homónimos situados en otras provincias, países, o rubros completamente diferentes (ej: si buscas una dietética, no relaciones una peluquería o un local de ropa).
+    - AGREGADORES DE ENLACES: Si el sitio web es un Linktree, Linkbio, Instabio, Beacons, Flowcode, etc., regístralo y analízalo para extraer las cuentas de redes sociales o el sitio web de ventas.
+    - SITIOS DE VENTAS: Si encuentras una plataforma de e-commerce propia activa (Tiendanube, Mercado Shops, Empretienda, etc.) o dominio propio activo (.com, .com.ar) perteneciente al negocio, regístralo en "website". No registres directorios de terceros (Yelp, Páginas Amarillas, TripAdvisor, etc.).
        
     Devuelve estrictamente un objeto JSON con el siguiente formato, sin bloques de código ```json, sin comentarios y sin explicaciones adicionales:
     {{
