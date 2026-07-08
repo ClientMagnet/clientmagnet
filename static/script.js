@@ -182,6 +182,15 @@ prospectForm.addEventListener("submit", async function(e) {
             
             originalLeads = [...localLeads];
             
+            // Forzar volver a la pestaña de prospectos en una nueva búsqueda
+            currentTab = "prospects";
+            const tabProspectsEl = document.getElementById("tabProspects");
+            const tabContactedEl = document.getElementById("tabContacted");
+            if (tabProspectsEl && tabContactedEl) {
+                tabProspectsEl.classList.add("active");
+                tabContactedEl.classList.remove("active");
+            }
+            
             // Mostrar/ocultar banner de advertencia según si la API key está disponible (servidor o UI)
             const warningBanner = document.getElementById("apiKeyWarningBanner");
             if (warningBanner) {
@@ -606,7 +615,11 @@ function updateMetrics() {
 
 // Export to Excel
 exportBtn.addEventListener("click", async function() {
-    if (localLeads.length === 0) return;
+    const leadsToExport = currentTab === "prospects" ? localLeads : contactedLeads;
+    if (leadsToExport.length === 0) {
+        showToast("No hay leads para exportar en esta pestaña.", "info");
+        return;
+    }
     
     exportBtn.disabled = true;
     const originalContent = exportBtn.innerHTML;
@@ -619,7 +632,7 @@ exportBtn.addEventListener("click", async function() {
                 "Content-Type": "application/json"
             },
             body: JSON.stringify({
-                items: localLeads
+                items: leadsToExport
             })
         });
         
