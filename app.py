@@ -1402,6 +1402,71 @@ def process_candidate_details(c, ciudad, servicio, nicho, api_key, estilo_mensaj
         "calidad_motivo": calidad_motivo
     }
 
+def gemini_discover_businesses(api_key, nicho, ciudad, zona, cantidad=20):
+    location_parts = []
+    if zona and zona.lower() not in ciudad.lower():
+        location_parts.append(zona)
+    location_parts.append(ciudad)
+    location_str = ", ".join(location_parts)
+    
+    prompt = f"""
+    Eres un investigador de mercado y experto en prospección comercial (OSINT). Tu tarea es buscar y listar hasta {cantidad} comercios locales del rubro "{nicho}" en la zona "{location_str}", Argentina.
+    
+    REQUISITO OBLIGATORIO:
+    - Debes buscar únicamente comercios reales y existentes que tengan un número de teléfono registrado (preferiblemente de contacto o WhatsApp). Si un comercio no tiene teléfono registrado, no lo listes.
+    
+    Para cada comercio, debes intentar encontrar:
+    1. Nombre oficial del negocio.
+    2. Teléfono de contacto (completo, ej: +54 9 11 1234-5678 o local 0351 15-123456).
+    3. Dirección física exacta.
+    4. Sitio web oficial (si tiene, o null si no tiene).
+    5. Perfil de Instagram oficial (si tiene, o null si no tiene).
+    6. Calificación promedio en estrellas (entre 1.0 y 5.0, o null si no tiene).
+    
+    Usa tu herramienta Google Search para buscar directorios de comercios, guías locales, listados de Google Maps o redes sociales.
+    
+    Devuelve estrictamente una respuesta en formato JSON, sin bloques de código ```json, sin comentarios y sin explicaciones adicionales. El formato debe ser una lista de objetos:
+    [
+      {{
+        "name": "Nombre del negocio",
+        "phone_original": "Teléfono en formato original",
+        "address": "Dirección física",
+        "website": "URL del sitio web o null",
+        "instagram": "URL de Instagram o null",
+        "rating": 4.5
+      }}
+    ]
+    """
+    
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+    headers = {"Content-Type": "application/json"}
+    payload = {
+        "contents": [{
+            "parts": [{
+                "text": prompt
+            }]
+        }],
+        "tools": [{"google_search": {}}],
+        "generationConfig": {
+            "responseMimeType": "application/json"
+        }
+    }
+    
+    try:
+        resp = requests.post(url, headers=headers, json=payload, timeout=25)
+        if resp.status_code == 200:
+            res_data = resp.json()
+            text = res_data['candidates'][0]['content']['parts'][0]['text'].strip()
+            if text.startswith("```"):
+                text = re.sub(r'^```(?:json)?\s*', '', text)
+                text = re.sub(r'\s*```$', '', text)
+            businesses = json.loads(text.strip())
+            if isinstance(businesses, list):
+                return businesses
+    except Exception as e:
+        print(f"Error en gemini_discover_businesses: {e}")
+    return []
+
 @app.route("/api/search", methods=["POST"])
 def search_businesses():
     # 0. Validar sesión real del usuario en el backend
@@ -1463,130 +1528,123 @@ def search_businesses():
     query = f"{nicho} en {zona}, {ciudad}, Argentina"
     maps_url = f"https://www.google.com/maps/search/{urllib.parse.quote(query)}"
     
+    candidates = []
+    
+    # 1. Intentar primero con el scraping nativo de Google Maps
     try:
-        # 1. Obtener HTML inicial para extraer el pb
         print(f"Realizando búsqueda inicial en: {maps_url}")
         resp = requests.get(maps_url, headers=HEADERS, timeout=10)
-        if resp.status_code != 200:
-            return jsonify({"status": "error", "message": "Error al conectar con Google Maps."}), 500
-            
-        # Buscar el pb parameter en el HTML
-        match = re.search(r'href="([^"]*tbm=map[^"]*pb=[^"]*)"', resp.text)
-        if not match:
-            match = re.search(r'pb=([^"&]*)', resp.text)
-            
-        if not match:
-            return jsonify({"status": "error", "message": "No se pudo iniciar la sesión de búsqueda de Google Maps."}), 500
-            
-        pb_param = match.group(1)
-        if "pb=" in pb_param:
-            pb_value = re.search(r'pb=([^&]*)', pb_param).group(1)
+        if resp.status_code == 200:
+            match = re.search(r'href="([^"]*tbm=map[^"]*pb=[^"]*)"', resp.text)
+            if not match:
+                match = re.search(r'pb=([^"&]*)', resp.text)
+                
+            if match:
+                pb_param = match.group(1)
+                pb_value = re.search(r'pb=([^&]*)', pb_param).group(1) if "pb=" in pb_param else pb_param
+                pb_decoded = urllib.parse.unquote(pb_value)
+                
+                limit_token = f"!7i{cantidad}"
+                if "!7i20" in pb_decoded:
+                    pb_decoded_modified = pb_decoded.replace("!7i20", limit_token)
+                else:
+                    pb_decoded_modified = re.sub(r'!7i\d+', limit_token, pb_decoded)
+                    
+                pb_encoded = urllib.parse.quote(pb_decoded_modified)
+                search_api_url = f"https://www.google.com/search?tbm=map&authuser=0&hl=es&gl=ar&q={urllib.parse.quote(query)}&pb={pb_encoded}"
+                print(f"Llamando a la API interna: {search_api_url}")
+                tbm_resp = requests.get(search_api_url, headers=HEADERS, timeout=12)
+                
+                if tbm_resp.status_code == 200 and tbm_resp.text.startswith(")]}'"):
+                    clean_text = tbm_resp.text[4:].strip()
+                    map_data = json.loads(clean_text)
+                    if len(map_data) >= 65 and map_data[64]:
+                        raw_businesses = map_data[64]
+                        count_valid = 0
+                        for entry in raw_businesses:
+                            if count_valid >= cantidad:
+                                break
+                            if not isinstance(entry, list) or len(entry) < 2:
+                                continue
+                            info = entry[1]
+                            if not isinstance(info, list) or len(info) < 12:
+                                continue
+                            name = info[11] if len(info) > 11 else None
+                            if not name:
+                                continue
+                            phone_raw = None
+                            if len(info) > 178 and info[178] and isinstance(info[178], list) and len(info[178]) > 0:
+                                phone_sub = info[178][0]
+                                if isinstance(phone_sub, list) and len(phone_sub) > 0:
+                                    phone_raw = phone_sub[0]
+                            if not phone_raw:
+                                continue
+                            address = info[39] if len(info) > 39 and info[39] else (info[18] if len(info) > 18 and info[18] else "Dirección no disponible")
+                            phone_clean = clean_argentine_phone(phone_raw, default_area_code)
+                            maps_website = info[7][0] if len(info) > 7 and info[7] and isinstance(info[7], list) and len(info[7]) > 0 else None
+                            
+                            all_urls = extract_all_external_urls(info)
+                            links = get_best_links(all_urls, name, maps_website=maps_website)
+                            rating = info[4][7] if len(info) > 4 and info[4] and isinstance(info[4], list) and len(info[4]) > 7 else None
+                            
+                            candidates.append({
+                                "name": name,
+                                "phone_original": phone_raw,
+                                "phone_clean": phone_clean,
+                                "address": address,
+                                "rating": rating,
+                                "website": links.get("website") or maps_website,
+                                "instagram": links.get("instagram"),
+                                "facebook": links.get("facebook"),
+                                "whatsapp": links.get("whatsapp"),
+                                "booking": links.get("booking"),
+                                "other_social": links.get("other_social")
+                            })
+                            count_valid += 1
+    except Exception as e:
+        print(f"Error en raspado nativo de Google Maps: {e}")
+
+    # 2. Si el scraper nativo falló o no encontró nada (ej: por bloqueo de IP en Render), y hay API Key, usar Gemini Grounding
+    if not candidates:
+        if api_key:
+            print("Google Maps bloqueado o sin resultados. Iniciando prospección asistida por Gemini AI...")
+            try:
+                discovered = gemini_discover_businesses(api_key, nicho, ciudad, zona, cantidad)
+                for item in discovered:
+                    name = item.get("name")
+                    phone_raw = item.get("phone_original")
+                    if not name or not phone_raw:
+                        continue
+                    phone_clean = clean_argentine_phone(phone_raw, default_area_code)
+                    candidates.append({
+                        "name": name,
+                        "phone_original": phone_raw,
+                        "phone_clean": phone_clean,
+                        "address": item.get("address") or "Dirección no disponible",
+                        "rating": item.get("rating"),
+                        "website": item.get("website"),
+                        "instagram": item.get("instagram"),
+                        "facebook": item.get("facebook"),
+                        "whatsapp": None,
+                        "booking": None,
+                        "other_social": None
+                    })
+            except Exception as e:
+                print(f"Error en descubrimiento asistido por Gemini: {e}")
         else:
-            pb_value = pb_param
-            
-        # Decodificar el pb para manipular el límite
-        pb_decoded = urllib.parse.unquote(pb_value)
-        
-        # Reemplazar el límite de resultados original (!7i20 por defecto) con la cantidad deseada (!7iXX)
-        # La cantidad de resultados solicitada se mapea a !7i{cantidad}
-        limit_token = f"!7i{cantidad}"
-        if "!7i20" in pb_decoded:
-            pb_decoded_modified = pb_decoded.replace("!7i20", limit_token)
-        else:
-            # Reemplazar cualquier patrón !7i seguido de dígitos
-            pb_decoded_modified = re.sub(r'!7i\d+', limit_token, pb_decoded)
-            
-        # Volver a codificar
-        pb_encoded = urllib.parse.quote(pb_decoded_modified)
-        
-        # 2. Hacer la llamada al API interna de Google Maps (search?tbm=map)
-        search_api_url = f"https://www.google.com/search?tbm=map&authuser=0&hl=es&gl=ar&q={urllib.parse.quote(query)}&pb={pb_encoded}"
-        print(f"Llamando a la API interna: {search_api_url}")
-        tbm_resp = requests.get(search_api_url, headers=HEADERS, timeout=12)
-        
-        if tbm_resp.status_code != 200 or not tbm_resp.text.startswith(")]}'"):
-            return jsonify({"status": "error", "message": "Google Maps denegó la consulta de datos estructurados."}), 500
-            
-        # Parsear JSON
-        clean_text = tbm_resp.text[4:].strip()
-        map_data = json.loads(clean_text)
-        
-        # Comprobar si hay resultados en la posición [64]
-        if len(map_data) < 65 or not map_data[64]:
-            return jsonify({"status": "success", "data": [], "message": "No se encontraron negocios para esa búsqueda."})
-            
-        raw_businesses = map_data[64]
-        candidates = []
-        
-        count_valid = 0
-        for entry in raw_businesses:
-            if count_valid >= cantidad:
-                break
-                
-            if not isinstance(entry, list) or len(entry) < 2:
-                continue
-            info = entry[1]
-            if not isinstance(info, list) or len(info) < 12:
-                continue
-                
-            # Extraer Nombre
-            name = info[11] if len(info) > 11 else None
-            if not name:
-                continue
-                
-            # Extraer Teléfono
-            phone_raw = None
-            if len(info) > 178 and info[178] and isinstance(info[178], list) and len(info[178]) > 0:
-                phone_sub = info[178][0]
-                if isinstance(phone_sub, list) and len(phone_sub) > 0:
-                    phone_raw = phone_sub[0]
-            
-            # REGLA CRUCIAL: Si no tiene teléfono comercial registrado en Google Maps, descártalo inmediatamente
-            if not phone_raw:
-                continue
-                
-            # Extraer Dirección / Ubicación
-            address = None
-            if len(info) > 39 and info[39]:
-                address = info[39]
-            elif len(info) > 18 and info[18]:
-                address = info[18]
-            else:
-                address = "Dirección no disponible"
-                
-            # Limpiar Teléfono a formato internacional de WhatsApp
-            phone_clean = clean_argentine_phone(phone_raw, default_area_code)
-            
-            # 1. Obtener sitio web oficial directo de la ficha de Maps si existe
-            maps_website = None
-            if len(info) > 7 and info[7] and isinstance(info[7], list) and len(info[7]) > 0:
-                maps_website = info[7][0]
+            return jsonify({
+                "status": "error",
+                "message": "La conexión con Google Maps fue bloqueada desde el servidor. Por favor, cargá tu clave API de Gemini en la barra lateral para activar la prospección asistida por IA que evita este bloqueo."
+            }), 500
 
-            # 2. Extraer otras URLs y clasificar aplicando validación de nombre
-            all_urls = extract_all_external_urls(info)
-            links = get_best_links(all_urls, name, maps_website=maps_website)
-            
-            rating = None
-            if len(info) > 4 and info[4] and isinstance(info[4], list) and len(info[4]) > 7:
-                rating = info[4][7]
-                
-            candidates.append({
-                "name": name,
-                "phone_original": phone_raw,
-                "phone_clean": phone_clean,
-                "address": address,
-                "rating": rating,
-                "website": links.get("website"),
-                "instagram": links.get("instagram"),
-                "facebook": links.get("facebook"),
-                "whatsapp": links.get("whatsapp"),
-                "booking": links.get("booking"),
-                "other_social": links.get("other_social")
-            })
-            count_valid += 1
+    if not candidates:
+        return jsonify({
+            "status": "success",
+            "data": [],
+            "message": "No se encontraron comercios locales con teléfono registrado para esta búsqueda."
+        })
 
-
-# Continuación de /api/search
+    try:
         # Procesar todos los candidatos en paralelo para resolver webs, redes sociales, puntuaciones y propuestas
         estilo_mensaje = req_data.get("estilo_mensaje", "argentino").strip()
         user_name = user_profile.get("name", user_session.get("name", "Francisco"))
