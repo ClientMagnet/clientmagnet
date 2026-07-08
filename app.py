@@ -342,6 +342,8 @@ def fallback_search_socials(business_name, city, platform="instagram", zona=None
     # 1. Intentar primero con Brave Search
     brave_url = f"https://search.brave.com/search?q={urllib.parse.quote(query)}"
     try:
+        # Añadir un pequeño retraso aleatorio para evitar rate limits (bloqueo 429) por concurrencia
+        time.sleep(random.uniform(0.1, 1.2))
         resp = requests.get(brave_url, headers=HEADERS, timeout=6)
         if resp.status_code == 200:
             pattern = r'https?://(?:www\.)?' + (r'instagram\.com' if platform == "instagram" else r'facebook\.com') + r'/[a-zA-Z0-9_\.\-]+'
@@ -411,6 +413,8 @@ def fallback_search_website(business_name, city, zona=None):
     # 1. Intentar primero con Brave Search
     brave_url = f"https://search.brave.com/search?q={urllib.parse.quote(query)}"
     try:
+        # Añadir un pequeño retraso aleatorio para evitar rate limits (bloqueo 429) por concurrencia
+        time.sleep(random.uniform(0.1, 1.2))
         resp = requests.get(brave_url, headers=HEADERS, timeout=6)
         if resp.status_code == 200:
             hrefs = re.findall(r'href="([^"]+)"', resp.text)
