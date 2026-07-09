@@ -97,7 +97,7 @@ HEADERS = {
 def clean_argentine_phone(raw_phone, default_area_code="351"):
     if not raw_phone:
         return None
-        
+    raw_phone = str(raw_phone)
     # Dejar solo dígitos
     digits = re.sub(r'\D', '', raw_phone)
     
@@ -765,14 +765,19 @@ def calculate_service_score(servicio, website, rating=None, instagram=None, face
     # 4. Empleado / Ventas / Administrativos / Otros: Se basa ÚNICAMENTE en la reputación y reviews de Google Maps
     else:
         if rating:
-            score = int(float(rating) * 20)
-            score = max(10, min(100, score))
-            if score < 50:
-                motivo = f"Reputación Baja ({rating}★)"
-            elif score < 85:
-                motivo = f"Reputación Regular ({rating}★)"
-            else:
-                motivo = f"Reputación Excelente ({rating}★)"
+            try:
+                clean_rating = float(str(rating).replace(',', '.').strip())
+                score = int(clean_rating * 20)
+                score = max(10, min(100, score))
+                if score < 50:
+                    motivo = f"Reputación Baja ({clean_rating}★)"
+                elif score < 85:
+                    motivo = f"Reputación Regular ({clean_rating}★)"
+                else:
+                    motivo = f"Reputación Excelente ({clean_rating}★)"
+            except Exception:
+                score = 50
+                motivo = "Sin Calificación (Reputación Promedio)"
         else:
             score = 50
             motivo = "Sin Calificación (Reputación Promedio)"
@@ -1688,7 +1693,11 @@ def search_businesses():
                 f.write(f"--- ERROR AT {datetime.datetime.now()} ---\n{error_msg}\n")
         except Exception as log_err:
             print(f"Failed to write to log file: {log_err}")
-        return jsonify({"status": "error", "message": f"Ocurrió un error en el servidor: {str(e)}"}), 500
+        return jsonify({
+            "status": "error", 
+            "message": f"Ocurrió un error en el servidor: {str(e)}", 
+            "traceback": traceback.format_exc()
+        }), 500
 
 @app.route("/api/export", methods=["POST"])
 def export_excel():

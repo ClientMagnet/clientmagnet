@@ -230,7 +230,12 @@ prospectForm.addEventListener("submit", async function(e) {
                 showToast(result.message, "error");
                 openPremiumModal();
             } else {
-                showToast((result && result.message) || "Error al realizar la búsqueda.", "error");
+                let msg = (result && result.message) || "Error al realizar la búsqueda.";
+                if (result && result.traceback) {
+                    console.error("Server Traceback:\n", result.traceback);
+                    msg += ` (Detalle: ${result.message})`;
+                }
+                showToast(msg, "error");
             }
             renderEmptyState();
         }
