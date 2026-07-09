@@ -1472,6 +1472,26 @@ def gemini_discover_businesses(api_key, nicho, ciudad, zona, cantidad=20):
         print(f"Error en gemini_discover_businesses: {e}")
     return []
 
+@app.route("/api/debug-maps")
+def debug_maps():
+    query = "dietetica en Palermo, Buenos Aires, Argentina"
+    maps_url = f"https://www.google.com/maps/search/{urllib.parse.quote(query)}"
+    try:
+        resp = requests.get(maps_url, headers=HEADERS, timeout=10)
+        has_pb = "pb=" in resp.text
+        has_tbm = "tbm=map" in resp.text
+        
+        info = {
+            "status_code": resp.status_code,
+            "length": len(resp.text),
+            "has_pb": has_pb,
+            "has_tbm": has_tbm,
+            "sample": resp.text[:1000]
+        }
+        return jsonify(info)
+    except Exception as e:
+        return str(e), 500
+
 @app.route("/api/debug-logs")
 def debug_logs():
     if os.path.exists("server_errors.log"):
