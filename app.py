@@ -1541,6 +1541,20 @@ def debug_maps_full():
     except Exception as e:
         return str(e), 500
 
+@app.route("/api/debug-ddg")
+def debug_ddg():
+    query = "dietetica Palermo"
+    url = f"https://html.duckduckgo.com/html/?q={urllib.parse.quote(query)}"
+    try:
+        resp = requests.get(url, headers=HEADERS, timeout=10)
+        return jsonify({
+            "status_code": resp.status_code,
+            "length": len(resp.text),
+            "sample": resp.text[:1000]
+        })
+    except Exception as e:
+        return str(e), 500
+
 @app.route("/api/debug-logs")
 def debug_logs():
     if os.path.exists("server_errors.log"):
