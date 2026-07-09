@@ -1492,6 +1492,55 @@ def debug_maps():
     except Exception as e:
         return str(e), 500
 
+@app.route("/api/debug-maps-full")
+def debug_maps_full():
+    nicho = "dietetica"
+    ciudad = "Palermo"
+    zona = "Palermo"
+    cantidad = 5
+    query = f"{nicho} en {zona}, {ciudad}, Argentina"
+    maps_url = f"https://www.google.com/maps/search/{urllib.parse.quote(query)}"
+    
+    info = {"status": "start"}
+    try:
+        resp = requests.get(maps_url, headers=HEADERS, timeout=10)
+        match = re.search(r'href="([^"]*tbm=map[^"]*pb=[^"]*)"', resp.text)
+        if not match:
+            match = re.search(r'pb=([^"&]*)', resp.text)
+            
+        if not match:
+            return jsonify({"status": "failed_initial_pb_match"})
+            
+        pb_param = match.group(1)
+        pb_value = re.search(r'pb=([^&]*)', pb_param).group(1) if "pb=" in pb_param else pb_param
+        pb_decoded = urllib.parse.unquote(pb_value)
+        
+        limit_token = f"!7i{cantidad}"
+        if "!7i20" in pb_decoded:
+            pb_decoded_modified = pb_decoded.replace("!7i20", limit_token)
+        else:
+            pb_decoded_modified = re.sub(r'!7i\d+', limit_token, pb_decoded)
+            
+        pb_encoded = urllib.parse.quote(pb_decoded_modified)
+        search_api_url = f"https://www.google.com/search?tbm=map&authuser=0&hl=es&gl=ar&q={urllib.parse.quote(query)}&pb={pb_encoded}"
+        
+        tbm_resp = requests.get(search_api_url, headers=HEADERS, timeout=12)
+        info["tbm_status_code"] = tbm_resp.status_code
+        info["tbm_starts_with_prefix"] = tbm_resp.text.startswith(")]}'")
+        info["tbm_sample"] = tbm_resp.text[:500]
+        
+        if tbm_resp.status_code == 200 and tbm_resp.text.startswith(")]}'"):
+            clean_text = tbm_resp.text[4:].strip()
+            map_data = json.loads(clean_text)
+            info["map_data_len"] = len(map_data)
+            if len(map_data) >= 65 and map_data[64]:
+                info["candidates_count"] = len(map_data[64])
+            else:
+                info["candidates_count"] = 0
+        return jsonify(info)
+    except Exception as e:
+        return str(e), 500
+
 @app.route("/api/debug-logs")
 def debug_logs():
     if os.path.exists("server_errors.log"):
