@@ -91,9 +91,16 @@ def extract_first_name(full_name):
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Accept-Language": "es-ES,es;q=0.9,en;q=0.8"
+}
+
+GOOGLE_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
     "Accept-Language": "es-ES,es;q=0.9,en;q=0.8",
     "Cookie": "CONSENT=YES+cb.20230510-17-p0.es-ES+999"
 }
+
+IS_PRODUCTION = os.environ.get("RENDER") is not None
 
 def clean_argentine_phone(raw_phone, default_area_code="351"):
     if not raw_phone:
@@ -345,7 +352,7 @@ def fallback_search_socials(business_name, city, platform="instagram", zona=None
     try:
         # Añadir un pequeño retraso aleatorio para evitar rate limits (bloqueo 429) por concurrencia
         time.sleep(random.uniform(0.1, 1.2))
-        resp = requests.get(brave_url, headers=HEADERS, timeout=6)
+        resp = requests.get(brave_url, headers=HEADERS, timeout=3)
         if resp.status_code == 200:
             pattern = r'https?://(?:www\.)?' + (r'instagram\.com' if platform == "instagram" else r'facebook\.com') + r'/[a-zA-Z0-9_\.\-]+'
             links = re.findall(pattern, resp.text, re.IGNORECASE)
@@ -360,43 +367,45 @@ def fallback_search_socials(business_name, city, platform="instagram", zona=None
     except Exception as e:
         print(f"Error en fallback_search_socials (Brave): {e}")
         
-    # 2. Respaldo secundario: DuckDuckGo
-    ddg_url = f"https://html.duckduckgo.com/html/?q={urllib.parse.quote(query)}"
-    try:
-        resp = requests.get(ddg_url, headers=HEADERS, timeout=5)
-        if resp.status_code == 200:
-            html = urllib.parse.unquote(resp.text)
-            pattern = r'https?://(?:www\.)?' + (r'instagram\.com' if platform == "instagram" else r'facebook\.com') + r'/[a-zA-Z0-9_\.\-]+'
-            links = re.findall(pattern, html, re.IGNORECASE)
-            filtered = []
-            for l in links:
-                l_lower = l.lower()
-                if not any(x in l_lower for x in ["/p/", "/reel/", "/stories/", "/accounts/", "/explore/", "/developer", "/privacy", "/terms"]):
-                    clean_link = re.sub(r'[.,;:\'"\)\\]+$', '', l)
-                    filtered.append(clean_link)
-            if filtered:
-                return filtered[0]
-    except Exception:
-        pass
+    # 2. Respaldo secundario: DuckDuckGo (solo local)
+    if not IS_PRODUCTION:
+        ddg_url = f"https://html.duckduckgo.com/html/?q={urllib.parse.quote(query)}"
+        try:
+            resp = requests.get(ddg_url, headers=HEADERS, timeout=5)
+            if resp.status_code == 200:
+                html = urllib.parse.unquote(resp.text)
+                pattern = r'https?://(?:www\.)?' + (r'instagram\.com' if platform == "instagram" else r'facebook\.com') + r'/[a-zA-Z0-9_\.\-]+'
+                links = re.findall(pattern, html, re.IGNORECASE)
+                filtered = []
+                for l in links:
+                    l_lower = l.lower()
+                    if not any(x in l_lower for x in ["/p/", "/reel/", "/stories/", "/accounts/", "/explore/", "/developer", "/privacy", "/terms"]):
+                        clean_link = re.sub(r'[.,;:\'"\)\\]+$', '', l)
+                        filtered.append(clean_link)
+                if filtered:
+                    return filtered[0]
+        except Exception:
+            pass
         
-    # 3. Respaldo terciario: Bing
-    bing_url = f"https://www.bing.com/search?q={urllib.parse.quote(query)}"
-    try:
-        resp = requests.get(bing_url, headers=HEADERS, timeout=5)
-        if resp.status_code == 200:
-            html = urllib.parse.unquote(resp.text)
-            pattern = r'https?://(?:www\.)?' + (r'instagram\.com' if platform == "instagram" else r'facebook\.com') + r'/[a-zA-Z0-9_\.\-]+'
-            links = re.findall(pattern, html, re.IGNORECASE)
-            filtered = []
-            for l in links:
-                l_lower = l.lower()
-                if not any(x in l_lower for x in ["/p/", "/reel/", "/stories/", "/accounts/", "/explore/", "/developer", "/privacy", "/terms"]):
-                    clean_link = re.sub(r'[.,;:\'"\)\\]+$', '', l)
-                    filtered.append(clean_link)
-            if filtered:
-                return filtered[0]
-    except Exception:
-        pass
+    # 3. Respaldo terciario: Bing (solo local)
+    if not IS_PRODUCTION:
+        bing_url = f"https://www.bing.com/search?q={urllib.parse.quote(query)}"
+        try:
+            resp = requests.get(bing_url, headers=HEADERS, timeout=5)
+            if resp.status_code == 200:
+                html = urllib.parse.unquote(resp.text)
+                pattern = r'https?://(?:www\.)?' + (r'instagram\.com' if platform == "instagram" else r'facebook\.com') + r'/[a-zA-Z0-9_\.\-]+'
+                links = re.findall(pattern, html, re.IGNORECASE)
+                filtered = []
+                for l in links:
+                    l_lower = l.lower()
+                    if not any(x in l_lower for x in ["/p/", "/reel/", "/stories/", "/accounts/", "/explore/", "/developer", "/privacy", "/terms"]):
+                        clean_link = re.sub(r'[.,;:\'"\)\\]+$', '', l)
+                        filtered.append(clean_link)
+                if filtered:
+                    return filtered[0]
+        except Exception:
+            pass
         
     return None
 
@@ -416,7 +425,7 @@ def fallback_search_website(business_name, city, zona=None):
     try:
         # Añadir un pequeño retraso aleatorio para evitar rate limits (bloqueo 429) por concurrencia
         time.sleep(random.uniform(0.1, 1.2))
-        resp = requests.get(brave_url, headers=HEADERS, timeout=6)
+        resp = requests.get(brave_url, headers=HEADERS, timeout=3)
         if resp.status_code == 200:
             hrefs = re.findall(r'href="([^"]+)"', resp.text)
             for link in hrefs:
@@ -435,57 +444,59 @@ def fallback_search_website(business_name, city, zona=None):
     except Exception as e:
         print(f"Error en fallback_search_website (Brave): {e}")
         
-    # 2. Respaldo secundario: DuckDuckGo
-    ddg_url = f"https://html.duckduckgo.com/html/?q={urllib.parse.quote(query)}"
-    try:
-        resp = requests.get(ddg_url, headers=HEADERS, timeout=5)
-        if resp.status_code == 200:
-            html = urllib.parse.unquote(resp.text)
-            href_pattern = r'href="([^"]+)"'
-            links = re.findall(href_pattern, html)
-            for link in links:
-                if link.startswith("http"):
-                    link_lower = link.lower()
-                    if not any(x in link_lower for x in [
-                        "instagram.com", "facebook.com", "wa.link", "whatsapp.com", "linktr.ee",
-                        "youtube.com", "duckduckgo.com", "google.com", "bing.com", "yahoo.com",
-                        "linkedin.com", "twitter.com", "pinterest.com", "yelp.", "tripadvisor.",
-                        "paginasamarillas", "mercadolibre", "pedidosya", "rappi", "wikipedia.org",
-                        "github.com", "microsoft.com", "apple.com", "t.co"
-                    ]):
-                        domain = urllib.parse.urlparse(link).netloc.lower()
-                        domain_clean = domain.replace("www.", "")
-                        words = [w for w in clean_name.lower().split() if len(w) > 3]
-                        if words and any(w in domain_clean for w in words):
-                            return link
-    except Exception as e:
-        print(f"Error en fallback_search_website (DDG): {e}")
+    # 2. Respaldo secundario: DuckDuckGo (solo local)
+    if not IS_PRODUCTION:
+        ddg_url = f"https://html.duckduckgo.com/html/?q={urllib.parse.quote(query)}"
+        try:
+            resp = requests.get(ddg_url, headers=HEADERS, timeout=5)
+            if resp.status_code == 200:
+                html = urllib.parse.unquote(resp.text)
+                href_pattern = r'href="([^"]+)"'
+                links = re.findall(href_pattern, html)
+                for link in links:
+                    if link.startswith("http"):
+                        link_lower = link.lower()
+                        if not any(x in link_lower for x in [
+                            "instagram.com", "facebook.com", "wa.link", "whatsapp.com", "linktr.ee",
+                            "youtube.com", "duckduckgo.com", "google.com", "bing.com", "yahoo.com",
+                            "linkedin.com", "twitter.com", "pinterest.com", "yelp.", "tripadvisor.",
+                            "paginasamarillas", "mercadolibre", "pedidosya", "rappi", "wikipedia.org",
+                            "github.com", "microsoft.com", "apple.com", "t.co"
+                        ]):
+                            domain = urllib.parse.urlparse(link).netloc.lower()
+                            domain_clean = domain.replace("www.", "")
+                            words = [w for w in clean_name.lower().split() if len(w) > 3]
+                            if words and any(w in domain_clean for w in words):
+                                return link
+        except Exception as e:
+            print(f"Error en fallback_search_website (DDG): {e}")
         
-    # 3. Respaldo terciario: Bing
-    bing_url = f"https://www.bing.com/search?q={urllib.parse.quote(query)}"
-    try:
-        resp = requests.get(bing_url, headers=HEADERS, timeout=5)
-        if resp.status_code == 200:
-            html = urllib.parse.unquote(resp.text)
-            href_pattern = r'href="([^"]+)"'
-            links = re.findall(href_pattern, html)
-            for link in links:
-                if link.startswith("http"):
-                    link_lower = link.lower()
-                    if not any(x in link_lower for x in [
-                        "instagram.com", "facebook.com", "wa.link", "whatsapp.com", "linktr.ee",
-                        "youtube.com", "duckduckgo.com", "google.com", "bing.com", "yahoo.com",
-                        "linkedin.com", "twitter.com", "pinterest.com", "yelp.", "tripadvisor.",
-                        "paginasamarillas", "mercadolibre", "pedidosya", "rappi", "wikipedia.org",
-                        "github.com", "microsoft.com", "apple.com", "t.co"
-                    ]):
-                        domain = urllib.parse.urlparse(link).netloc.lower()
-                        domain_clean = domain.replace("www.", "")
-                        words = [w for w in clean_name.lower().split() if len(w) > 3]
-                        if words and any(w in domain_clean for w in words):
-                            return link
-    except Exception as e:
-        print(f"Error en fallback_search_website (Bing): {e}")
+    # 3. Respaldo terciario: Bing (solo local)
+    if not IS_PRODUCTION:
+        bing_url = f"https://www.bing.com/search?q={urllib.parse.quote(query)}"
+        try:
+            resp = requests.get(bing_url, headers=HEADERS, timeout=5)
+            if resp.status_code == 200:
+                html = urllib.parse.unquote(resp.text)
+                href_pattern = r'href="([^"]+)"'
+                links = re.findall(href_pattern, html)
+                for link in links:
+                    if link.startswith("http"):
+                        link_lower = link.lower()
+                        if not any(x in link_lower for x in [
+                            "instagram.com", "facebook.com", "wa.link", "whatsapp.com", "linktr.ee",
+                            "youtube.com", "duckduckgo.com", "google.com", "bing.com", "yahoo.com",
+                            "linkedin.com", "twitter.com", "pinterest.com", "yelp.", "tripadvisor.",
+                            "paginasamarillas", "mercadolibre", "pedidosya", "rappi", "wikipedia.org",
+                            "github.com", "microsoft.com", "apple.com", "t.co"
+                        ]):
+                            domain = urllib.parse.urlparse(link).netloc.lower()
+                            domain_clean = domain.replace("www.", "")
+                            words = [w for w in clean_name.lower().split() if len(w) > 3]
+                            if words and any(w in domain_clean for w in words):
+                                return link
+        except Exception as e:
+            print(f"Error en fallback_search_website (Bing): {e}")
         
     return None
 
@@ -1546,7 +1557,7 @@ def search_businesses():
     # 1. Intentar primero con el scraping nativo de Google Maps
     try:
         print(f"Realizando búsqueda inicial en: {maps_url}")
-        resp = requests.get(maps_url, headers=HEADERS, timeout=10)
+        resp = requests.get(maps_url, headers=GOOGLE_HEADERS, timeout=10)
         if resp.status_code == 200:
             match = re.search(r'href="([^"]*tbm=map[^"]*pb=[^"]*)"', resp.text)
             if not match:
@@ -1566,7 +1577,7 @@ def search_businesses():
                 pb_encoded = urllib.parse.quote(pb_decoded_modified)
                 search_api_url = f"https://www.google.com.ar/search?tbm=map&authuser=0&hl=es&gl=ar&q={urllib.parse.quote(query)}&pb={pb_encoded}"
                 print(f"Llamando a la API interna: {search_api_url}")
-                tbm_resp = requests.get(search_api_url, headers=HEADERS, timeout=12)
+                tbm_resp = requests.get(search_api_url, headers=GOOGLE_HEADERS, timeout=12)
                 
                 if tbm_resp.status_code == 200 and tbm_resp.text.startswith(")]}'"):
                     clean_text = tbm_resp.text[4:].strip()
