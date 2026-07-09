@@ -91,7 +91,8 @@ def extract_first_name(full_name):
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    "Accept-Language": "es-ES,es;q=0.9,en;q=0.8"
+    "Accept-Language": "es-ES,es;q=0.9,en;q=0.8",
+    "Cookie": "CONSENT=YES+cb.20230510-17-p0.es-ES+999"
 }
 
 def clean_argentine_phone(raw_phone, default_area_code="351"):
@@ -1621,7 +1622,7 @@ def search_businesses():
 
     # Construir consulta
     query = f"{nicho} en {zona}, {ciudad}, Argentina"
-    maps_url = f"https://www.google.com/maps/search/{urllib.parse.quote(query)}"
+    maps_url = f"https://www.google.com.ar/maps/search/{urllib.parse.quote(query)}"
     
     candidates = []
     
@@ -1646,7 +1647,7 @@ def search_businesses():
                     pb_decoded_modified = re.sub(r'!7i\d+', limit_token, pb_decoded)
                     
                 pb_encoded = urllib.parse.quote(pb_decoded_modified)
-                search_api_url = f"https://www.google.com/search?tbm=map&authuser=0&hl=es&gl=ar&q={urllib.parse.quote(query)}&pb={pb_encoded}"
+                search_api_url = f"https://www.google.com.ar/search?tbm=map&authuser=0&hl=es&gl=ar&q={urllib.parse.quote(query)}&pb={pb_encoded}"
                 print(f"Llamando a la API interna: {search_api_url}")
                 tbm_resp = requests.get(search_api_url, headers=HEADERS, timeout=12)
                 
